@@ -365,7 +365,9 @@ const LocalDB={
   },
   async batches(store){return this.read('batches',[]).filter(b=>!store||b.store===store);},
   async saveRules(r){this.write('rules',r);},
-  async loadRules(){return this.read('rules',null);}
+  async loadRules(){return this.read('rules',null);},
+  async remove(id){const all=this.read('batches',[]);const i=all.findIndex(b=>b.id===id);
+    if(i>=0)all.splice(i,1);this.write('batches',all);}
 };
 
 /* ══════════ 儲存層：雲端版（Supabase，設定填入後啟用） ══════════ */
@@ -393,7 +395,8 @@ const CloudDB={
     const {data,error}=await q;if(error)throw error;return data||[];
   },
   async saveRules(r){const {error}=await this.sb.from('rules').upsert({id:1,brands:r.brands,subs:r.subs});if(error)throw error;},
-  async loadRules(){const {data}=await this.sb.from('rules').select('brands,subs').eq('id',1).maybeSingle();return data||null;}
+  async loadRules(){const {data}=await this.sb.from('rules').select('brands,subs').eq('id',1).maybeSingle();return data||null;},
+  async remove(id){const {error}=await this.sb.from('batches').delete().eq('id',id);if(error)throw error;}
 };
 const DB=CLOUD?CloudDB:LocalDB;
 
@@ -759,10 +762,16 @@ function renderUrls(){
 async function renderHistory(){
   const b=await DB.batches();
   if(!b.length){$('history').innerHTML='<div class="empty">還沒有發布紀錄。</div>';return;}
-  $('history').innerHTML='<table><thead><tr><th>時間</th><th>店點</th><th>單號</th><th>筆數</th></tr></thead><tbody>'
+  $('history').innerHTML='<table><thead><tr><th>時間</th><th>店點</th><th>單號</th><th>筆數</th><th style="width:60px"></th></tr></thead><tbody>'
    +b.slice(0,30).map(x=>'<tr><td class="c">'+new Date(x.published_at).toLocaleString('zh-TW')+'</td>'
-     +'<td>'+esc(x.store)+'</td><td class="c">'+esc(x.docno)+'</td><td class="c">'+x.items.length+'</td></tr>').join('')
+     +'<td>'+esc(x.store)+'</td><td class="c">'+esc(x.docno)+'</td><td class="c">'+x.items.length+'</td>'
+     +'<td><button class="mini" data-rmb="'+esc(x.id)+'" data-nm="'+esc(x.store+' '+x.docno)+'">刪除</button></td></tr>').join('')
    +'</tbody></table>';
+  $('history').querySelectorAll('[data-rmb]').forEach(btn=>btn.onclick=async()=>{
+    if(!confirm('刪除這批發布？\n'+btn.dataset.nm+'\n門市端會同步看不到，無法復原。'))return;
+    try{await DB.remove(btn.dataset.rmb);renderHistory();toast('已刪除');}
+    catch(e){toast('刪除失敗：'+e.message);}
+  });
 }
 
 /* ══════════════════ 門市 ══════════════════ */
