@@ -133,6 +133,7 @@ footer .cnt strong{font-size:18px}
   <span class="spec">50 × 15 mm　·　上限 36 半形　·　Code 128B</span>
   <span class="badge" id="roleBadge">總部</span>
   <span class="spacer"></span>
+  <button class="mini" id="pwBtn" hidden>改密碼</button>
   <button class="mini" id="logoutBtn" hidden>登出</button>
 </header>
 
@@ -554,6 +555,7 @@ function applyRole(){
   const admin=AUTH.isAdmin();
   const logged=!!AUTH.role;
   $('logoutBtn').hidden=!logged;
+  $('pwBtn').hidden=!(logged&&AUTH.isAdmin()&&CLOUD);
   if(!logged){
     $('gate').hidden=false;$('hq').hidden=true;$('store').hidden=true;
     $('roleBadge').textContent=WANT?(STORE_KEYS[WANT]||'門市'):'未登入';$('roleBadge').className='badge';
@@ -586,6 +588,19 @@ $('pwGo').onclick=async()=>{
 };
 $('pw').addEventListener('keydown',e=>{if(e.key==='Enter')$('pwGo').click();});
 $('logoutBtn').onclick=async()=>{await AUTH.logout();QUEUE=[];renderFooter();HIST=[];applyRole();};
+$('pwBtn').onclick=async()=>{
+  const a=prompt('輸入新密碼（至少 6 碼）');
+  if(a===null)return;
+  if(!a||a.length<6){toast('密碼至少 6 碼');return;}
+  const b=prompt('再輸入一次確認');
+  if(b===null)return;
+  if(a!==b){toast('兩次輸入不一樣，未修改');return;}
+  try{
+    const {error}=await CloudDB.sb.auth.updateUser({password:a});
+    if(error)throw error;
+    toast('密碼已更新，下次登入請用新密碼');
+  }catch(e){toast('修改失敗：'+e.message);}
+};
 
 /* ══════════════════ 總部 ══════════════════ */
 function setStep(n){document.querySelectorAll('.step').forEach(el=>{
@@ -653,7 +668,7 @@ function renderPreview(){
   if(!list.length){$('preview').innerHTML='<div class="empty">此店點沒有明細。</div>';updatePublishState();return;}
   $('preview').innerHTML='<div class="scrollx"><table style="min-width:860px"><thead><tr>'
    +'<th style="width:132px">商品編號／條碼</th><th>大禾原始品名</th><th style="width:270px">條碼顯示名稱</th>'
-   +'<th style="width:62px">寬度</th><th style="width:62px">數量</th></tr></thead><tbody>'
+   +'<th style="width:62px">寬度</th><th style="width:62px">數量</th><th style="width:44px"></th></tr></thead><tbody>'
    +list.map((it,i)=>{
      const w=width(it.label_name),bad=w>LIMIT,p=splitAtLimit(it.label_name);
      const bc=barcodeOf(it);
@@ -665,7 +680,8 @@ function renderPreview(){
       +'<td class="sn"><input type="text" data-i="'+i+'" class="lab" value="'+esc(it.label_name)+'">'
         +(bad?'<div class="hint">印出：'+esc(p[0])+'<span class="cut">'+esc(p[1])+'</span></div>':'')+'</td>'
       +'<td><span class="w '+(bad?'bad':'')+'">'+w+'/'+LIMIT+'</span></td>'
-      +'<td class="qty"><input type="text" data-q="'+i+'" value="'+it.qty+'"></td></tr>';
+      +'<td class="qty"><input type="text" data-q="'+i+'" value="'+it.qty+'"></td>'
+      +'<td><button class="mini" data-del="'+i+'" title="此批不印，移除">✕</button></td></tr>';
    }).join('')+'</tbody></table></div>';
 
   $('preview').querySelectorAll('.lab').forEach(el=>el.addEventListener('input',e=>{
@@ -680,6 +696,12 @@ function renderPreview(){
   $('preview').querySelectorAll('[data-q]').forEach(el=>el.addEventListener('input',e=>{
     curItems()[+e.target.dataset.q].qty=Math.max(1,parseInt(e.target.value,10)||1);
   }));
+  $('preview').querySelectorAll('[data-del]').forEach(el=>el.onclick=()=>{
+    const it=curItems()[+el.dataset.del];
+    if(!confirm('移除這筆？\n'+it.label_name+'\n（只影響這次發布，不影響大禾資料）'))return;
+    const k=ALL.indexOf(it); if(k>=0)ALL.splice(k,1);
+    renderTabs(); renderPreview(); toast('已移除');
+  });
   updatePublishState();
 }
 
