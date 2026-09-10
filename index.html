@@ -73,6 +73,7 @@ td.qty input{width:56px;font-family:var(--mono);font-size:12px;padding:5px 6px;t
 .scrollx table{margin-top:0}
 .scrollx th{position:static}
 .pubmsg{background:#FDF2E8;border-left:3px solid var(--warn);color:var(--warn);font-weight:700;padding:9px 13px;margin-top:12px;border-radius:2px}
+.stbtn{padding:11px 22px;font-size:15px;font-weight:700}
 .bhead{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;margin-bottom:10px;padding:10px 13px;background:var(--paper);border:1px solid var(--rule);border-radius:2px}
 .bhead b{color:var(--ink2);font-weight:600;margin-right:4px}
 .storeTitle{font-size:22px;margin:4px 0 14px;font-weight:800;letter-spacing:.01em}
@@ -781,10 +782,21 @@ async function renderStorePage(){
   HIST=[];
   await renderArrivals();
 }
-function batchHeader(b){
-  return '<div class="bhead"><span><b>發貨日期</b> '+esc(dateOf(b.docno)||new Date(b.published_at).toLocaleDateString('zh-TW'))+'</span>'
-   +'<span><b>發貨單號</b> '+esc(b.docno)+'</span><span><b>商品項數</b> '+b.items.length+'</span>'
-   +'<span class="hint" style="margin:0">發布於 '+new Date(b.published_at).toLocaleString('zh-TW')+'</span></div>';
+function dateKey(b){return dateOf(b.docno)||new Date(b.published_at).toLocaleDateString('zh-TW');}
+function groupByDate(batches){
+  const g={},order=[];
+  for(const b of batches){
+    const k=dateKey(b);
+    if(!g[k]){g[k]={date:k,batches:[],items:[]};order.push(k);}
+    g[k].batches.push(b);
+    for(const it of b.items) g[k].items.push(Object.assign({},it,{docno:b.docno,store:b.store}));
+  }
+  return order.map(k=>g[k]);
+}
+function dayHeader(d){
+  return '<div class="bhead"><span><b>發貨日期</b> '+esc(d.date)+'</span>'
+   +'<span><b>商品項數</b> '+d.items.length+'</span>'
+   +'<span><b>發貨單</b> '+d.batches.map(x=>esc(x.docno)).join('、')+'</span></div>';
 }
 function itemRow(it,i,checked,qty){
   const w=width(it.label_name),bad=w>LIMIT;
@@ -795,15 +807,15 @@ function itemRow(it,i,checked,qty){
    +'<span class="qwrap">張數 <input type="text" class="qbox" data-i="'+i+'" value="'+qty+'" onclick="event.stopPropagation()"></span>'
    +'</label>';
 }
-function bindBatchList(b){
+function bindDayList(list){
   const sync=()=>{
     QUEUE=[];
     $('arrivals').querySelectorAll('.selbox').forEach(cb=>{
       cb.closest('.rowitem').classList.toggle('on',cb.checked);
       if(!cb.checked)return;
-      const it=b.items[+cb.dataset.i];
+      const it=list[+cb.dataset.i];
       const q=parseInt($('arrivals').querySelector('.qbox[data-i="'+cb.dataset.i+'"]').value,10)||1;
-      QUEUE.push(Object.assign({},it,{qty:Math.max(1,q),store:b.store,docno:b.docno}));
+      QUEUE.push(Object.assign({},it,{qty:Math.max(1,q)}));
     });
     renderFooter();
   };
@@ -821,33 +833,34 @@ async function renderArrivals(){
   if(!batches.length){
     $('arrivals').innerHTML='<div class="empty">目前沒有到貨資料。<br>總部發布後重新整理就會出現。</div>';return;
   }
-  const b=batches[0];
-  $('arrivals').innerHTML=batchHeader(b)
-   +'<div class="btnrow" style="margin:0 0 10px"><button class="mini" id="selAll">全選</button>'
-   +'<button class="mini" id="selNone">全不選</button>'
-   +(batches.length>1?'<button class="mini" id="olderBtn">歷史到貨（'+(batches.length-1)+' 批）</button>':'')+'</div>'
-   +b.items.map((it,i)=>itemRow(it,i,true,it.qty)).join('');
-  bindBatchList(b);
-  const ob=$('olderBtn');if(ob)ob.onclick=()=>renderOlder(batches);
+  const days=groupByDate(batches);
+  const d=days[0];
+  $('arrivals').innerHTML=dayHeader(d)
+   +'<div class="btnrow" style="margin:0 0 12px"><button class="stbtn" id="selAll">全選</button>'
+   +'<button class="stbtn" id="selNone">全不選</button>'
+   +(days.length>1?'<button class="stbtn" id="olderBtn">之前的到貨（'+(days.length-1)+' 天）</button>':'')+'</div>'
+   +d.items.map((it,i)=>itemRow(it,i,true,it.qty)).join('');
+  bindDayList(d.items);
+  const ob=$('olderBtn');if(ob)ob.onclick=()=>renderOlder(days);
 }
-async function renderOlder(batches){
+async function renderOlder(days){
   QUEUE=[];renderFooter();
-  $('arrivals').innerHTML='<div class="btnrow" style="margin-top:0"><button class="mini" id="backBtn">← 回最新到貨</button></div>'
-   +'<table><thead><tr><th>發貨日期</th><th>發貨單號</th><th style="width:70px">項數</th><th style="width:80px"></th></tr></thead><tbody>'
-   +batches.map((b,i)=>'<tr><td class="c">'+esc(dateOf(b.docno)||new Date(b.published_at).toLocaleDateString('zh-TW'))+'</td>'
-     +'<td class="c">'+esc(b.docno)+'</td><td class="c">'+b.items.length+'</td>'
-     +'<td><button class="mini" data-open="'+i+'">開啟</button></td></tr>').join('')+'</tbody></table>';
+  $('arrivals').innerHTML='<div class="btnrow" style="margin-top:0"><button class="stbtn" id="backBtn">← 回最新到貨</button></div>'
+   +'<table><thead><tr><th>發貨日期</th><th style="width:90px">項數</th><th style="width:110px"></th></tr></thead><tbody>'
+   +days.map((d,i)=>'<tr><td class="c" style="font-size:14px">'+esc(d.date)+'</td>'
+     +'<td class="c" style="font-size:14px">'+d.items.length+'</td>'
+     +'<td><button class="stbtn" data-open="'+i+'">開啟</button></td></tr>').join('')+'</tbody></table>';
   $('backBtn').onclick=()=>renderArrivals();
-  $('arrivals').querySelectorAll('[data-open]').forEach(btn=>btn.onclick=()=>openBatch(batches[+btn.dataset.open],batches));
+  $('arrivals').querySelectorAll('[data-open]').forEach(btn=>btn.onclick=()=>openDay(days[+btn.dataset.open],days));
 }
-function openBatch(b,batches){
+function openDay(d,days){
   QUEUE=[];renderFooter();
-  $('arrivals').innerHTML='<div class="btnrow" style="margin-top:0"><button class="mini" id="backBtn">← 回列表</button></div>'
-   +batchHeader(b)
-   +'<div class="btnrow" style="margin:0 0 10px"><button class="mini" id="selAll">全選</button><button class="mini" id="selNone">全不選</button></div>'
-   +b.items.map((it,i)=>itemRow(it,i,false,1)).join('');
-  $('backBtn').onclick=()=>renderOlder(batches);
-  bindBatchList(b);
+  $('arrivals').innerHTML='<div class="btnrow" style="margin-top:0"><button class="stbtn" id="backBtn">← 回列表</button></div>'
+   +dayHeader(d)
+   +'<div class="btnrow" style="margin:0 0 12px"><button class="stbtn" id="selAll">全選</button><button class="stbtn" id="selNone">全不選</button></div>'
+   +d.items.map((it,i)=>itemRow(it,i,false,1)).join('');
+  $('backBtn').onclick=()=>renderOlder(days);
+  bindDayList(d.items);
 }
 
 /* ── 搜尋補印：歷史到貨優先；手機不從商品清單產生 ── */
