@@ -15,12 +15,14 @@ jobs:
           SUPABASE_URL: https://mzxotnksydazewxpvjmu.supabase.co
           SUPABASE_KEY: sb_publishable_-v1PBd0kCXJQozk1bed2Cg_t7Tr3E82   # 與 index.html 相同的公開金鑰
         run: |
-          set -e
-          echo "Auth 服務..."
-          curl -fsS "$SUPABASE_URL/auth/v1/settings" \
-            -H "apikey: $SUPABASE_KEY" > /dev/null
-          echo "REST 服務..."
-          curl -fsS "$SUPABASE_URL/rest/v1/" \
-            -H "apikey: $SUPABASE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_KEY" > /dev/null
+          check () {
+            code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 30 "$1" -H "apikey: $SUPABASE_KEY" || echo 000)
+            echo "$2 → HTTP $code"
+            if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then
+              echo "::error::$2 連不上（專案可能被暫停，請到 Supabase 按 Resume）"
+              exit 1
+            fi
+          }
+          check "$SUPABASE_URL/auth/v1/settings" "Auth 服務"
+          check "$SUPABASE_URL/rest/v1/rules?select=*&limit=1" "資料庫"
           echo "OK - $(date -u '+%Y-%m-%d %H:%M UTC')"
