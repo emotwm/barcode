@@ -326,7 +326,7 @@ const DEF_SUBS=[
  '玻璃螢幕保護貼 → 玻璃貼','玻璃保護貼 → 玻璃貼','螢幕保護貼 → 保護貼','鏡頭保護貼 → 鏡頭貼','保護貼 → 貼',
  '編織傳輸充電線 → 編織充電線','傳輸充電線 → 充電線','USB-C to USB-C → C-C','USB-C to C → C-C',
  '保護殼 → 殼','手機殼 → 殼','保護套 → 套','行動電源 → 電源','藍牙耳機 → 耳機','藍芽耳機 → 耳機',
- '快速旅充組 → 旅充組',
+ '快速旅充組 → 旅充組','康寧授權玻璃保護貼 → 康寧貼','康寧玻璃保護貼 → 康寧貼','康寧授權 → 康寧',
  '# ── 款式 ──',
  '主動式降噪款 → 降噪','超快速充電2.0 → ','不鏽鋼藍寶石 → 藍寶石','低反光低藍光 → 低反藍',
  '低藍光 → 低藍','抗藍光 → 抗藍','耐衝擊 → 耐衝','抗污防摔 → 抗污','邊框透殼 → 框透殼','滿版 → 滿',
@@ -391,9 +391,24 @@ function watchName(name){
   for(const t of tries) if(width(t)<=LIMIT) return t;
   return tries[tries.length-1];
 }
+/* iPhone 機型縮寫：iPhone 18 Pro/17 Pro → iP18Pro/17Pro；同代重複的數字省略（18Pro/18ProMax → 18Pro/ProMax） */
+function iphoneModels(s){
+  if(!/iPhone\s*\d/i.test(s))return s;
+  s=s.replace(/(?:APPLE\s+)?iPhone\s*(?=\d)/gi,'iP');
+  s=s.replace(/(\d{2})\s*(Pro\s*Max|Pro|Plus|Air|mini|e)(?![A-Za-z])/g,(m,n,t)=>n+t.replace(/\s+/g,''));
+  s=s.replace(/(iP\d{2}[A-Za-z]*)((?:\s*\/\s*\d{2}[A-Za-z]*)+)/g,(m,a,rest)=>{
+    let prev=a.match(/\d{2}/)[0], out=a;
+    for(const part of rest.split('/').slice(1)){
+      const q=part.trim(), n=q.match(/^\d{2}/)[0], t=q.slice(2);
+      out+='/'+((n===prev&&t)?t:q); prev=n;
+    }
+    return out;
+  });
+  return s;
+}
 function shorten(name){
   const aw=watchName(name); if(aw)return aw;
-  let s=String(name||'');
+  let s=iphoneModels(String(name||''));
   /* 1. 抽出並保護廠商識別碼 */
   const vend=[]; s=s.replace(VENDOR,m=>{vend.push(m);return '\u0001';});
   s=s.replace(/^\s*上線條碼\s*/,'');
