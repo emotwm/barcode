@@ -361,7 +361,38 @@ function smartReplace(s,a,b){
   }
   return out;
 }
+/* ══════════ Apple Watch 專用縮名（2026/10 定案） ══════════
+   格式：AW S12 GPS46｜黑鋁｜黑帶【SM】(台)
+   超過 36 字時依序：① 刪「AW 」 ② (台) 改成「 台」 ③ 仍超過 → 交給人工（名稱過長）
+   廠商碼只改寫法、絕不刪除。解析不了的品名回到一般縮名規則。 */
+const AW_BASIC=/^[黑白紅藍綠灰金銀粉紫黃橘棕]$/;
+function awColor(c){c=String(c||'').trim().replace(/^-/,'');const t=c.replace(/色$/,'');return (t.length>=2||AW_BASIC.test(t))?t:c;}
+function watchName(name){
+  const src=String(name||'');
+  if(!/Apple\s*Watch/i.test(src))return null;
+  const vend=vendorOf(src);
+  let s=src.replace(/\((台|廣|普)\)/g,'').replace(/\([A-Z0-9]{4,}[A-Z0-9\/\-]*\)/g,'');
+  const ser=s.match(/Apple\s*Watch\s*(?:Series\s*)?(S\s*\d+|SE\s*\d*|Ultra\s*\d*|\d+)/i); if(!ser)return null;
+  let series=ser[1].replace(/\s+/g,''); if(/^\d+$/.test(series))series='S'+series;
+  const net=/行動網路|LTE|Cellular|行動數據/i.test(s)?'LTE':'GPS';
+  const mm=s.match(/(\d{2})\s*mm/i); if(!mm)return null;
+  const cs=s.match(/\)?\s*([^\s()（）]*?)(鋁金屬|鋁|鈦金屬|鈦|不鏽鋼)錶殼/); if(!cs)return null;
+  const mat={'鋁金屬':'鋁','鋁':'鋁','鈦金屬':'鈦','鈦':'鈦','不鏽鋼':'鋼'}[cs[2]];
+  const caseColor=awColor(cs[1].replace(/^.*\)/,''));
+  const bd=s.match(/配\s*([^\s]*?)(運動錶環|越野錶環|高山錶環|海洋錶帶|米蘭式錶環|米蘭|錶環|錶帶)/); if(!bd)return null;
+  let band=bd[1], bsize='';
+  const bz=band.match(/(S\/M|M\/L|L\/XL|S|M|L)$/i); if(bz){bsize=bz[1].toUpperCase().replace('/','');band=band.slice(0,-bz[1].length);}
+  if(!bsize){const after=s.slice(bd.index+bd[0].length).match(/^\s*(S\/M|M\/L|L\/XL|S|M|L)(?![A-Za-z])/i);if(after)bsize=after[1].toUpperCase().replace('/','');}
+  const btype={'運動錶環':'環','越野錶環':'越野','高山錶環':'高山','海洋錶帶':'海洋','米蘭式錶環':'米蘭','米蘭':'米蘭','錶環':'環','錶帶':'帶'}[bd[2]];
+  const bandTxt=awColor(band)+btype+(bsize?'【'+bsize+'】':'');
+  const core=series+' '+net+mm[1]+'｜'+caseColor+mat+'｜'+bandTxt;
+  const tries=['AW '+core+vend, core+vend];
+  if(vend)tries.push(core+' '+vend.replace(/[()]/g,''));
+  for(const t of tries) if(width(t)<=LIMIT) return t;
+  return tries[tries.length-1];
+}
 function shorten(name){
+  const aw=watchName(name); if(aw)return aw;
   let s=String(name||'');
   /* 1. 抽出並保護廠商識別碼 */
   const vend=[]; s=s.replace(VENDOR,m=>{vend.push(m);return '\u0001';});
@@ -716,6 +747,7 @@ function vendorOf(name){const m=String(name).match(/\((台|廣|普)\)/g);return 
 function guardVendor(orig,edited){
   const v=vendorOf(orig); if(!v)return edited;
   if(edited.includes(v))return edited;
+  const bare=v.replace(/[()]/g,''); if(new RegExp('\\s'+bare+'$').test(edited))return edited; /* 「 台」也算保留 */
   return edited.replace(/\s+$/,'')+v;
 }
 function overCount(list){return list.filter(it=>width(it.label_name)>LIMIT).length;}
