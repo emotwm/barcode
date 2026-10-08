@@ -387,7 +387,7 @@ function watchName(name){
   const bandTxt=awColor(band)+btype+(bsize?'【'+bsize+'】':'');
   const core=series+' '+net+mm[1]+'｜'+caseColor+mat+'｜'+bandTxt;
   const tries=['AW '+core+vend, core+vend];
-  if(vend)tries.push(core+' '+vend.replace(/[()]/g,''));
+  if(vend)tries.push(core+vend.replace(/[()]/g,''));
   for(const t of tries) if(width(t)<=LIMIT) return t;
   return tries[tries.length-1];
 }
@@ -763,11 +763,16 @@ function renderTabs(){
 function curItems(){return ALL.filter(r=>(r.store||'（未標示）')===CUR);}
 
 function vendorOf(name){const m=String(name).match(/\((台|廣|普)\)/g);return m?m[m.length-1]:'';}
+/* 超過 36 字時，結尾的 (台)(廣)(普) 拿掉括號、緊貼前字：…【SM】(台) → …【SM】台 */
+function fitVendor(s){
+  if(width(s)<=LIMIT)return s;
+  return s.replace(/\s*\((台|廣|普)\)\s*$/,'$1');
+}
 function guardVendor(orig,edited){
   const v=vendorOf(orig); if(!v)return edited;
-  if(edited.includes(v))return edited;
-  const bare=v.replace(/[()]/g,''); if(new RegExp('\\s'+bare+'$').test(edited))return edited; /* 「 台」也算保留 */
-  return edited.replace(/\s+$/,'')+v;
+  if(edited.includes(v))return fitVendor(edited);
+  const bare=v.replace(/[()]/g,''); if(new RegExp(bare+'$').test(edited))return edited; /* 結尾「台」也算保留 */
+  return fitVendor(edited.replace(/\s+$/,'')+v);
 }
 function overCount(list){return list.filter(it=>width(it.label_name)>LIMIT).length;}
 function updatePublishState(){
