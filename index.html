@@ -81,6 +81,8 @@ td.qty input{width:56px;font-family:var(--mono);font-size:12px;padding:5px 6px;t
 .bhead b{color:var(--ink2);font-weight:600;margin-right:4px}
 .storeTitle{font-size:22px;margin:4px 0 14px;font-weight:800;letter-spacing:.01em}
 .storeTitle .sep{color:var(--rule);margin:0 6px;font-weight:400}
+.pc{display:block;margin-top:4px;font-size:12px;font-weight:700;color:var(--warn);font-family:var(--sans)}
+.pc[hidden]{display:none}
 .long{display:inline-block;background:var(--warn);color:#fff;font-size:10px;font-weight:700;
  padding:2px 7px;border-radius:2px;margin-left:6px;vertical-align:middle}
 .rowitem{display:flex;align-items:center;gap:12px;background:var(--paper);border:1px solid var(--rule);
@@ -142,9 +144,16 @@ footer button{white-space:nowrap}
 .toast.on{opacity:1}
 .gate{max-width:340px;margin:70px auto;background:var(--paper);border:1px solid var(--rule);padding:22px;border-radius:3px}
 #sheet{display:none}
+.modal{position:fixed;inset:0;z-index:60;background:rgba(28,27,25,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.modal .box{background:var(--paper);border-radius:6px;padding:22px;width:100%;max-width:380px;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.modal h3{margin:0 0 4px;font-size:19px;color:var(--accent)}
+.modal label{display:block;margin-top:14px;font-size:13px;color:var(--ink2)}
+.modal select,.modal input{font-size:18px;padding:10px;margin-top:4px}
+.modal .err{color:#B00020;font-weight:700;min-height:20px;margin:10px 0 0;font-size:14px}
+.modal .btnrow{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
 [hidden]{display:none!important}
 @media print{html,body{margin:0!important;padding:0!important;width:50mm;background:#fff}
- header,footer,main,.toast{display:none!important}
+ header,footer,main,.toast,.modal{display:none!important}
  #sheet{display:block;margin:0;padding:0}
  @page{size:50mm 15mm;margin:0}
  .plabel{width:50mm;height:15mm;page-break-after:always;break-after:page;padding:0.8mm 1.2mm;
@@ -219,6 +228,26 @@ footer button{white-space:nowrap}
     <div id="urls" style="margin-top:10px"></div>
   </details>
 
+  <details id="staffBox">
+    <summary>人員管理（列印人員名單與個人密碼）</summary>
+    <div class="btnrow" style="margin:10px 0;flex-wrap:wrap;gap:8px">
+      <select id="stStore" style="width:auto"></select>
+      <input type="text" id="stName" placeholder="姓名" style="width:140px">
+      <input type="text" id="stPin" placeholder="密碼（4 位數）" inputmode="numeric" maxlength="8" style="width:150px">
+      <button class="primary" id="stAdd">新增人員</button>
+    </div>
+    <p class="hint" style="margin:0 0 8px">標示「預設密碼」的人還在用 0000，請請他本人想一組 4 位數，由總部按「改密碼」設定。</p>
+    <div id="staffList"></div>
+  </details>
+
+  <details id="plogBox">
+    <summary>列印紀錄（各店印了哪些標籤、印過幾次）</summary>
+    <div class="btnrow" style="margin:10px 0"><select id="plogStore" style="width:auto"><option value="">全部店點</option></select>
+      <select id="plogWho" style="width:auto"><option value="">全部人員</option></select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="plogDup"> 只看重複列印</label></div>
+    <div id="plog"></div>
+  </details>
+
   <details>
     <summary>發布紀錄</summary>
     <div id="history" style="margin-top:10px"></div>
@@ -265,6 +294,14 @@ footer button{white-space:nowrap}
   <button class="primary" id="printBtn">🖨 列印標籤</button>
 </footer>
 
+<div class="modal" id="whoModal" hidden><div class="box">
+  <h3>🖨 誰在列印？</h3>
+  <p class="hint" style="margin:0">選自己的名字、輸入個人密碼，這次列印會記在你名下。</p>
+  <label>列印人員<select id="whoName"></select></label>
+  <label>個人密碼（4 位數）<input type="password" id="whoPin" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+  <p class="err" id="whoErr"></p>
+  <div class="btnrow"><button id="whoCancel">取消</button><button class="primary" id="whoOk">確認列印</button></div>
+</div></div>
 <div class="toast" id="toast"></div>
 <div id="sheet"></div>
 <script>
@@ -458,6 +495,19 @@ const LocalDB={
     return rec.id;
   },
   async batches(store){return this.read('batches',[]).filter(b=>!store||b.store===store);},
+  async logPrints(rows){const all=this.read('prints',[]);const t=new Date().toISOString();
+    for(const r of rows)all.unshift(Object.assign({printed_at:t},r));this.write('prints',all.slice(0,5000));},
+  async prints(store){return this.read('prints',[]).filter(r=>!store||r.store===store);},
+  async listStaff(store){return this.read('staff',[]).filter(x=>!store||x.store===store)
+    .map(x=>({id:x.id,store:x.store,name:x.name,active:x.active!==false,default_pin:x.pin==='0000'}));},
+  async saveStaff(id,store,name,pin,active){const all=this.read('staff',[]);
+    let x=id?all.find(a=>a.id===id):null;
+    if(!x){x={id:Date.now(),store,name,pin:pin||'0000',active:true};all.push(x);}
+    else{if(store)x.store=store;if(name)x.name=name;if(pin)x.pin=pin;if(active!=null)x.active=active;}
+    this.write('staff',all);},
+  async logPrintsBy(staffId,pin,rows){const x=this.read('staff',[]).find(a=>a.id===staffId);
+    if(!x||x.active===false||x.pin!==pin)throw new Error('密碼錯誤');
+    await this.logPrints(rows.map(r=>Object.assign({staff_name:x.name},r)));return x.name;},
   async saveRules(r){this.write('rules',r);},
   async loadRules(){return this.read('rules',null);},
   async remove(id){const all=this.read('batches',[]);const i=all.findIndex(b=>b.id===id);
@@ -490,7 +540,20 @@ const CloudDB={
   },
   async saveRules(r){const {error}=await this.sb.from('rules').upsert({id:1,brands:r.brands,subs:r.subs});if(error)throw error;},
   async loadRules(){const {data}=await this.sb.from('rules').select('brands,subs').eq('id',1).maybeSingle();return data||null;},
-  async remove(id){const {error}=await this.sb.from('batches').delete().eq('id',id);if(error)throw error;}
+  async remove(id){const {error}=await this.sb.from('batches').delete().eq('id',id);if(error)throw error;},
+  async logPrints(rows){const {error}=await this.sb.from('print_logs').insert(rows);if(error)throw error;},
+  async prints(store){
+    let q=this.sb.from('print_logs').select('printed_at,store,barcode,label_name,docno,qty,src,staff_name').order('printed_at',{ascending:false}).limit(3000);
+    if(store)q=q.eq('store',store);
+    const {data,error}=await q;if(error)throw error;return data||[];
+  },
+  async listStaff(store){const {data,error}=await this.sb.rpc('list_staff',{p_store:store||null});if(error)throw error;return data||[];},
+  async saveStaff(id,store,name,pin,active){
+    const {error}=await this.sb.rpc('admin_save_staff',{p_id:id||null,p_store:store||null,p_name:name||null,p_pin:pin||null,p_active:active==null?null:active});
+    if(error)throw new Error(error.message);},
+  async logPrintsBy(staffId,pin,rows){
+    const {data,error}=await this.sb.rpc('log_prints_by',{p_staff:staffId,p_pin:pin,p_rows:rows});
+    if(error)throw new Error(/pin|密碼/i.test(error.message)?'密碼錯誤':error.message);return data;}
 };
 const DB=CLOUD?CloudDB:LocalDB;
 
@@ -627,9 +690,10 @@ function renderExtras(){
   box.innerHTML='<p class="hint" style="margin:0 0 6px"><b>補印清單（'+n+' 張）</b>　會跟上面勾選的到貨一起印</p>'
    +EXTRA.map((it,i)=>'<div class="rowitem" style="cursor:default">'
      +'<span class="nm">'+esc(it.label_name)+(width(it.label_name)>LIMIT?'<span class="long">名稱過長</span>':'')
-     +'<small>'+esc(barcodeOf(it))+'</small></span>'
+     +'<small>'+esc(barcodeOf(it))+'</small>'+pcBadge(it)+'</span>'
      +'<span class="qwrap">張數 <input type="text" class="xq" data-i="'+i+'" value="'+it.qty+'"></span>'
      +'<button class="mini" data-rmx="'+i+'">移除</button></div>').join('');
+  refreshBadges();
   box.querySelectorAll('.xq').forEach(q=>q.onchange=()=>{
     EXTRA[+q.dataset.i].qty=Math.max(1,parseInt(q.value,10)||1);rebuildQueue();});
   box.querySelectorAll('[data-rmx]').forEach(b=>b.onclick=()=>{
@@ -643,14 +707,79 @@ function renderFooter(){
 }
 $('clearSel').onclick=()=>{ARRSEL=[];EXTRA=[];rebuildQueue();
   document.querySelectorAll('.selbox').forEach(b=>b.checked=false);toast('已清空');};
-$('printBtn').onclick=()=>{
+/* ══════════ 列印紀錄：每次按「列印標籤」都記一筆，重複列印會警示 ══════════ */
+/* ══════════ 列印人員：選名字＋個人密碼，驗證通過才印，紀錄記在個人名下 ══════════ */
+function askWho(rows){
+  return new Promise(async resolve=>{
+    const store=MYSTORE||'總部';
+    let list=[];
+    try{list=(await DB.listStaff(store)).filter(x=>x.active);}
+    catch(e){toast('讀不到人員名單：'+e.message);resolve(null);return;}
+    if(!list.length){toast('這間店還沒有建立人員，請總部到「人員管理」新增');resolve(null);return;}
+    let last='';try{last=localStorage.getItem('bc:who:'+store)||'';}catch(e){}
+    $('whoName').innerHTML='<option value="">— 請選擇 —</option>'+list.map(x=>'<option value="'+x.id+'"'+(String(x.id)===last?' selected':'')+'>'+esc(x.name)+'</option>').join('');
+    $('whoPin').value='';$('whoErr').textContent='';$('whoModal').hidden=false;
+    setTimeout(()=>($('whoName').value?$('whoPin'):$('whoName')).focus(),50);
+    const close=v=>{$('whoModal').hidden=true;$('whoOk').onclick=$('whoCancel').onclick=$('whoPin').onkeydown=null;resolve(v);};
+    $('whoCancel').onclick=()=>close(null);
+    $('whoPin').onkeydown=e=>{if(e.key==='Enter')$('whoOk').click();};
+    $('whoOk').onclick=async()=>{
+      const id=$('whoName').value, pin=$('whoPin').value.trim();
+      if(!id){$('whoErr').textContent='請選擇你的名字';return;}
+      if(!pin){$('whoErr').textContent='請輸入個人密碼';return;}
+      $('whoOk').disabled=true;$('whoErr').textContent='確認中…';
+      try{const name=await DB.logPrintsBy(+id,pin,rows);
+        try{localStorage.setItem('bc:who:'+store,id);}catch(e){}
+        $('whoOk').disabled=false;close(name||true);}
+      catch(e){$('whoOk').disabled=false;$('whoErr').textContent=e.message==='密碼錯誤'?'❌ 密碼錯誤，請再試一次':('❌ '+e.message);$('whoPin').select();}
+    };
+  });
+}
+let PCOUNT={};   /* 條碼 → {n:列印次數, last:最近時間} */
+function pcKey(store,bc){return (store||'')+'|'+bc;}
+async function loadPrintCounts(store){
+  PCOUNT={};
+  try{
+    for(const r of await DB.prints(store)){
+      const k=pcKey(r.store,r.barcode); const c=PCOUNT[k]||(PCOUNT[k]={n:0,last:r.printed_at});
+      c.n++; if(r.printed_at>c.last)c.last=r.printed_at;
+    }
+  }catch(e){console.warn('print log',e);}
+  refreshBadges();
+}
+function pcOf(it){return PCOUNT[pcKey(it.store||MYSTORE,barcodeOf(it))];}
+function mdOf(t){const d=new Date(t);return (d.getMonth()+1)+'/'+d.getDate();}
+function pcBadge(it){return '<span class="pc" data-pcbc="'+esc(pcKey(it.store||MYSTORE,barcodeOf(it)))+'"></span>';}
+function refreshBadges(){
+  document.querySelectorAll('[data-pcbc]').forEach(el=>{
+    const c=PCOUNT[el.dataset.pcbc];
+    el.textContent=c?('⚠ 已印過 '+c.n+' 次・最近 '+mdOf(c.last)):'';
+    el.hidden=!c;
+  });
+}
+$('printBtn').onclick=async()=>{
   if(!QUEUE.length){toast('還沒有選要印的商品');return;}
   const blank=QUEUE.filter(it=>!barcodeOf(it));
   if(blank.length){toast('有 '+blank.length+' 筆商品沒有條碼資料，無法列印，請回報總部');return;}
+  const dup=QUEUE.filter(it=>pcOf(it));
+  if(dup.length){
+    const uniq=dup.filter(isUnique);
+    const msg=(uniq.length?'⚠ 有 '+uniq.length+' 台手機／序號商品已經印過標籤！\n同一台機器不應該有兩張標籤，請確認是補貼還是重複。\n\n':'')
+      +'以下商品之前印過：\n'
+      +dup.slice(0,12).map(it=>{const c=pcOf(it);return '・'+it.label_name+'（已印 '+c.n+' 次，最近 '+mdOf(c.last)+'）';}).join('\n')
+      +(dup.length>12?'\n…另外 '+(dup.length-12)+' 筆':'')
+      +'\n\n確定要再印一次嗎？（這次列印也會記錄下來）';
+    if(!confirm(msg))return;
+  }
+  const rows=QUEUE.map(it=>({store:it.store||MYSTORE||'總部',barcode:barcodeOf(it),label_name:it.label_name,
+    docno:it.docno||'',qty:it.qty,src:EXTRA.includes(it)?'補印':'到貨'}));
+  const who=await askWho(rows); if(!who)return;
   let html='';
   for(const it of QUEUE){for(let i=0;i<it.qty;i++)html+=labelHTML(it,'plabel',it.store,it.docno);}
   $('sheet').innerHTML=html;
-  try{window.print();}catch(e){toast('此環境無法列印，請在電腦 Chrome 開啟');}
+  try{window.print();}catch(e){toast('此環境無法列印，請在電腦 Chrome 開啟');return;}
+  for(const r of rows){const k=pcKey(r.store,r.barcode);const c=PCOUNT[k]||(PCOUNT[k]={n:0,last:''});c.n++;c.last=new Date().toISOString();}
+  refreshBadges();
 };
 
 /* ══════════ 身分 ══════════ */
@@ -876,6 +1005,59 @@ function renderUrls(){
    +'</tbody></table><p class="hint">目前是本機測試版，網址只在這台電腦有效。接上雲端後，這些網址就能給門市使用。</p>';
 }
 
+async function renderPrintLog(){
+  const box=$('plog');if(!box)return;
+  const sel=$('plogStore');
+  if(sel.options.length<2)for(const k in STORE_KEYS){const o=document.createElement('option');o.value=STORE_KEYS[k];o.textContent=STORE_KEYS[k];sel.add(o);}
+  box.innerHTML='<div class="empty">讀取中…</div>';
+  let rows=[];
+  try{rows=await DB.prints(sel.value);}catch(e){box.innerHTML='<div class="empty">讀不到列印紀錄：'+esc(e.message)+'<br>（雲端要先建立 print_logs 資料表）</div>';return;}
+  const cnt={};for(const r of rows){const k=r.store+'|'+r.barcode;cnt[k]=(cnt[k]||0)+1;}
+  const ws=$('plogWho'),cur=ws.value,names=[...new Set(rows.map(r=>r.staff_name).filter(Boolean))].sort();
+  ws.innerHTML='<option value="">全部人員</option>'+names.map(n=>'<option'+(n===cur?' selected':'')+'>'+esc(n)+'</option>').join('');
+  if(cur)rows=rows.filter(r=>r.staff_name===cur);
+  if($('plogDup').checked)rows=rows.filter(r=>cnt[r.store+'|'+r.barcode]>1);
+  if(!rows.length){box.innerHTML='<div class="empty">沒有紀錄。</div>';return;}
+  box.innerHTML='<div class="scrollx"><table style="min-width:760px"><thead><tr><th style="width:150px">時間</th><th style="width:70px">店點</th><th style="width:80px">列印人員</th><th>標籤名稱</th><th style="width:150px">條碼</th><th style="width:50px">張數</th><th style="width:50px">來源</th><th style="width:80px">累計次數</th></tr></thead><tbody>'
+   +rows.slice(0,300).map(r=>{const n=cnt[r.store+'|'+r.barcode];
+     return '<tr'+(n>1?' style="background:#FBEFE3"':'')+'><td class="c">'+new Date(r.printed_at).toLocaleString('zh-TW')+'</td><td>'+esc(r.store)+'</td><td>'+esc(r.staff_name||'—')+'</td>'
+     +'<td>'+esc(r.label_name)+'</td><td class="c">'+esc(r.barcode)+'</td><td class="c">'+r.qty+'</td><td class="c">'+esc(r.src||'')+'</td>'
+     +'<td class="c" style="'+(n>1?'color:var(--warn);font-weight:700':'')+'">'+n+' 次</td></tr>';}).join('')
+   +'</tbody></table></div>'+(rows.length>300?'<p class="hint">只顯示最近 300 筆。</p>':'');
+}
+$('plogBox').addEventListener('toggle',()=>{if($('plogBox').open)renderPrintLog();});
+$('plogStore').onchange=renderPrintLog;$('plogDup').onchange=renderPrintLog;$('plogWho').onchange=renderPrintLog;
+/* 人員管理 */
+const STAFF_STORES=['鼎山店','陽明店','後昌店','仁雄店','凱旋店','總部'];
+async function renderStaff(){
+  const sel=$('stStore'); if(!sel.options.length)sel.innerHTML=STAFF_STORES.map(x=>'<option>'+x+'</option>').join('');
+  let list=[];
+  try{list=await DB.listStaff('');}catch(e){$('staffList').innerHTML='<div class="empty">讀不到人員名單：'+esc(e.message)+'<br>（雲端要先執行 staff.sql）</div>';return;}
+  if(!list.length){$('staffList').innerHTML='<div class="empty">還沒有人員。</div>';return;}
+  list.sort((a,b)=>STAFF_STORES.indexOf(a.store)-STAFF_STORES.indexOf(b.store)||String(a.name).localeCompare(b.name));
+  $('staffList').innerHTML='<div class="scrollx"><table style="min-width:560px"><thead><tr><th style="width:80px">店點</th><th>姓名</th><th style="width:120px">狀態</th><th style="width:190px"></th></tr></thead><tbody>'
+   +list.map(x=>'<tr'+(x.active?'':' style="opacity:.5"')+'><td>'+esc(x.store)+'</td><td><b>'+esc(x.name)+'</b></td>'
+     +'<td>'+(x.active?(x.default_pin?'<span style="color:var(--warn);font-weight:700">預設密碼</span>':'使用中'):'已停用')+'</td>'
+     +'<td><button class="mini" data-pin="'+x.id+'" data-nm="'+esc(x.name)+'">改密碼</button> '
+     +'<button class="mini" data-act="'+x.id+'" data-on="'+(x.active?0:1)+'">'+(x.active?'停用':'啟用')+'</button></td></tr>').join('')
+   +'</tbody></table></div>';
+  $('staffList').querySelectorAll('[data-pin]').forEach(b=>b.onclick=async()=>{
+    const pin=prompt('設定 '+b.dataset.nm+' 的新密碼（4 位數字）：');if(pin==null)return;
+    if(!/^\d{4}$/.test(pin.trim())){toast('密碼要是 4 位數字');return;}
+    try{await DB.saveStaff(+b.dataset.pin,null,null,pin.trim(),null);toast('已更新密碼');renderStaff();}catch(e){toast('失敗：'+e.message);}
+  });
+  $('staffList').querySelectorAll('[data-act]').forEach(b=>b.onclick=async()=>{
+    try{await DB.saveStaff(+b.dataset.act,null,null,null,b.dataset.on==='1');renderStaff();}catch(e){toast('失敗：'+e.message);}
+  });
+}
+$('stAdd').onclick=async()=>{
+  const name=$('stName').value.trim(),pin=$('stPin').value.trim()||'0000';
+  if(!name){toast('請輸入姓名');return;}
+  if(!/^\d{4}$/.test(pin)){toast('密碼要是 4 位數字');return;}
+  try{await DB.saveStaff(null,$('stStore').value,name,pin,true);$('stName').value='';$('stPin').value='';toast('已新增 '+name);renderStaff();}
+  catch(e){toast('新增失敗：'+e.message);}
+};
+$('staffBox').addEventListener('toggle',()=>{if($('staffBox').open)renderStaff();});
 async function renderHistory(){
   const b=await DB.batches();
   if(!b.length){$('history').innerHTML='<div class="empty">還沒有發布紀錄。</div>';return;}
@@ -897,6 +1079,7 @@ async function renderStorePage(){
   $('qinfo').textContent='可搜尋本店到過的貨，以及全部商品 '+CAT.length+' 筆。手機因為每台 IMEI 不同，請從「之前的到貨」補印。';
   HIST=[];
   await renderArrivals();
+  await loadPrintCounts(MYSTORE);
 }
 function dateKey(b){return dateOf(b.docno)||new Date(b.published_at).toLocaleDateString('zh-TW');}
 function groupByDate(batches){
@@ -918,7 +1101,7 @@ function itemRow(it,i,checked,qty){
   return '<label class="rowitem'+(checked?' on':'')+'">'
    +'<input type="checkbox" class="selbox" data-i="'+i+'"'+(checked?' checked':'')+'>'
    +'<span class="nm">'+esc(it.label_name)+(bad?'<span class="long">名稱過長</span>':'')
-   +'<small>'+esc(barcodeOf(it))+(it.imei?'　IMEI':(it.serial?'　序號':''))+'</small></span>'
+   +'<small>'+esc(barcodeOf(it))+(it.imei?'　IMEI':(it.serial?'　序號':''))+'</small>'+pcBadge(it)+'</span>'
    +'<span class="qwrap">張數 <input type="text" class="qbox" data-i="'+i+'" value="'+qty+'" onclick="event.stopPropagation()"></span>'
    +'</label>';
 }
@@ -955,7 +1138,7 @@ async function renderArrivals(){
    +'<button class="stbtn" id="selNone">☐ 全部取消</button>'
    +(days.length>1?'<button class="stbtn" id="olderBtn">📅 看以前的到貨（還有 '+(days.length-1)+' 天）</button>':'')+'</div>'
    +d.items.map((it,i)=>itemRow(it,i,true,it.qty)).join('');
-  bindDayList(d.items);
+  bindDayList(d.items);refreshBadges();
   const ob=$('olderBtn');if(ob)ob.onclick=()=>renderOlder(days);
 }
 async function renderOlder(days){
@@ -975,7 +1158,7 @@ function openDay(d,days){
    +'<div class="btnrow" style="margin:0 0 12px"><button class="stbtn" id="selAll">☑ 全部打勾</button><button class="stbtn" id="selNone">☐ 全部取消</button></div>'
    +d.items.map((it,i)=>itemRow(it,i,false,1)).join('');
   $('backBtn').onclick=()=>renderOlder(days);
-  bindDayList(d.items);
+  bindDayList(d.items);refreshBadges();
 }
 
 /* ── 搜尋補印：歷史到貨優先；手機不從商品清單產生 ── */
@@ -1012,11 +1195,12 @@ async function doSearch(){
      +'<span class="nm">'+esc(it.label_name)+(bad?'<span class="long">名稱過長</span>':'')
      +'<small>'+esc(it.original_name)+'</small>'
      +'<small>'+(it.locked?'手機／唯一序號商品，請從歷史到貨補印':esc(barcodeOf(it))+(it.imei?'　IMEI':(it.serial?'　序號':'')))
-     +'　<span class="tag">'+it.src+(it.docno?' '+esc(dateOf(it.docno)):'')+'</span></small></span>'
+     +'　<span class="tag">'+it.src+(it.docno?' '+esc(dateOf(it.docno)):'')+'</span></small>'+(it.locked?'':pcBadge(it))+'</span>'
      +(it.locked?'':'<span class="qwrap">張數 <input type="text" class="rq" data-i="'+i+'" value="1"></span>'
        +'<button class="mini" data-add="'+i+'">加入</button>')
      +'</div>';
   }).join('')+(hit.length>=60?'<p class="hint">結果過多，只顯示前 60 筆。</p>':'');
+  refreshBadges();
   box.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{
     const it=hit[+b.dataset.add];
     const q=parseInt(box.querySelector('.rq[data-i="'+b.dataset.add+'"]').value,10)||1;
