@@ -445,7 +445,7 @@ const DEF_SUBS=[
  '玻璃螢幕保護貼 → 玻璃貼','玻璃保護貼 → 玻璃貼','螢幕保護貼 → 保護貼','鏡頭保護貼 → 鏡頭貼','保護貼 → 貼',
  '編織傳輸充電線 → 編織充電線','傳輸充電線 → 充電線','USB-C to USB-C → C-C','USB-C to C → C-C',
  '保護殼 → 殼','手機殼 → 殼','保護套 → 套','行動電源 → 電源','藍牙耳機 → 耳機','藍芽耳機 → 耳機',
- '快速旅充組 → 旅充組','康寧授權玻璃保護貼 → 康寧貼','康寧玻璃保護貼 → 康寧貼','康寧授權 → 康寧',
+ '快速旅充組 → 旅充組','4G智慧兒童手錶 → 兒童錶','4G兒童手錶 → 兒童錶','智慧兒童手錶 → 兒童錶','兒童智慧手錶 → 兒童錶','兒童手錶 → 兒童錶','貓貓蟲咖波 → 咖波','(連宇) → ','（連宇） → ','康寧授權玻璃保護貼 → 康寧貼','康寧玻璃保護貼 → 康寧貼','康寧授權 → 康寧',
  '# ── 款式 ──',
  '主動式降噪款 → 降噪','超快速充電2.0 → ','不鏽鋼藍寶石 → 藍寶石','低反光低藍光 → 低反藍',
  '低藍光 → 低藍','抗藍光 → 抗藍','耐衝擊 → 耐衝','抗污防摔 → 抗污','邊框透殼 → 框透殼','滿版 → 滿',
@@ -455,12 +455,13 @@ const DEF_SUBS=[
 let RULES={brands:DEF_BRANDS,subs:DEF_SUBS};
 /* Spin、Spin Air 是 TORRAS 兩個不同系列，不能刪（就算雲端舊規則還寫著也跳過） */
 function getBrands(){return RULES.brands.split(',').map(s=>s.trim()).filter(b=>b&&!/^Spin(\s*Air)?$/i.test(b));}
+/* 雲端存的規則 ＋ 程式內建的新規則（雲端沒有的才補上），之後新增的預設規則不用再到總部頁手動加 */
 function getSubs(){
-  const out=[];
-  for(const l of RULES.subs.split(/\r?\n/)){
+  const out=[], seen=new Set();
+  for(const l of (RULES.subs+'\n'+DEF_SUBS).split(/\r?\n/)){
     if(!l.trim()||l.trim().startsWith('#'))continue;
     const p=l.split('→'); if(p.length<2)continue;
-    const a=p[0].trim(); if(a) out.push([a,p[1].trim()]);
+    const a=p[0].trim(); if(a&&!seen.has(a)){seen.add(a);out.push([a,p[1].trim()]);}
   }
   out.sort((x,y)=>y[0].length-x[0].length);
   return out;
