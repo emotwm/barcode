@@ -1208,7 +1208,7 @@ async function renderStaff(){
   if(!list.length){$('staffList').innerHTML='<div class="empty">還沒有人員。</div>';return;}
   list.sort((a,b)=>STAFF_STORES.indexOf(a.store)-STAFF_STORES.indexOf(b.store)||String(a.name).localeCompare(b.name));
   $('staffList').innerHTML='<div class="scrollx"><table style="min-width:560px"><thead><tr><th style="width:80px">店點</th><th>姓名</th><th style="width:120px">狀態</th><th style="width:190px"></th></tr></thead><tbody>'
-   +list.map(x=>'<tr'+(x.active?'':' style="opacity:.5"')+'><td>'+esc(x.store)+'</td><td><b>'+esc(x.name)+'</b></td>'
+   +list.map(x=>'<tr'+(x.active?'':' style="opacity:.5"')+'><td>'+esc(x.store)+'</td><td><b>'+esc(x.name)+'</b>'+(list.filter(y=>y.name===x.name).length>1?' <span style="color:#888;font-size:12px">（'+list.filter(y=>y.name===x.name).length+' 店）</span>':'')+'</td>'
      +'<td>'+(x.active?(x.default_pin?'<span style="color:var(--warn);font-weight:700">預設密碼</span>':'使用中'):'已停用')+'</td>'
      +'<td><button class="mini" data-pin="'+x.id+'" data-nm="'+esc(x.name)+'">改密碼</button> '
      +'<button class="mini" data-act="'+x.id+'" data-on="'+(x.active?0:1)+'">'+(x.active?'停用':'啟用')+'</button></td></tr>').join('')
@@ -1216,7 +1216,11 @@ async function renderStaff(){
   $('staffList').querySelectorAll('[data-pin]').forEach(b=>b.onclick=async()=>{
     const pin=prompt('設定 '+b.dataset.nm+' 的新密碼（4 位數字）：');if(pin==null)return;
     if(!/^\d{4}$/.test(pin.trim())){toast('密碼要是 4 位數字');return;}
-    try{await DB.saveStaff(+b.dataset.pin,null,null,pin.trim(),null);toast('已更新密碼');renderStaff();}catch(e){toast('失敗：'+e.message);}
+    /* 同一個人在多間店（例如支援人員）→ 一次設定，所有店的密碼都一樣 */
+    const same=list.filter(x=>x.name===b.dataset.nm);
+    let ids=[+b.dataset.pin];
+    if(same.length>1&&confirm(b.dataset.nm+' 在 '+same.map(x=>x.store).join('、')+' 都有名單。\n\n按「確定」：這 '+same.length+' 間店一起改成同一組密碼\n按「取消」：只改這一間'))ids=same.map(x=>x.id);
+    try{for(const id of ids)await DB.saveStaff(id,null,null,pin.trim(),null);toast('已更新密碼'+(ids.length>1?'（'+ids.length+' 間店）':''));renderStaff();}catch(e){toast('失敗：'+e.message);}
   });
   $('staffList').querySelectorAll('[data-act]').forEach(b=>b.onclick=async()=>{
     try{await DB.saveStaff(+b.dataset.act,null,null,null,b.dataset.on==='1');renderStaff();}catch(e){toast('失敗：'+e.message);}
