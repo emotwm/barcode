@@ -67,6 +67,27 @@ td.qty input{width:56px;font-family:var(--mono);font-size:12px;padding:5px 6px;t
 .tag{display:inline-block;font-family:var(--mono);font-size:10px;border:1px solid var(--rule);
  padding:1px 5px;border-radius:2px;color:var(--ink2)}
 .tag.imei{border-color:var(--accent);color:var(--accent)}
+.hqnav{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 18px;border-bottom:2px solid var(--rule)}
+.hqnav button{border:0;border-bottom:3px solid transparent;margin-bottom:-2px;background:none;padding:10px 14px;font-size:14px;font-weight:600;color:var(--ink2);border-radius:0}
+.hqnav button:hover{color:var(--ink)}
+.hqnav button.on{color:var(--accent);border-bottom-color:var(--accent)}
+.btnlink{display:inline-block;border:1px solid var(--ink);padding:4px 10px;font-size:11px;font-weight:500;color:var(--ink);text-decoration:none;border-radius:2px}
+.hqTitle{font-size:21px;margin:0 0 12px;font-weight:800}
+.card{background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:16px 18px;margin-bottom:14px}
+.cardTitle{margin:0 0 10px;font-size:17px;color:var(--accent);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.cardTitle small{font-size:12px;color:var(--ink2);font-weight:500}
+.cardTitle .big{font-style:normal;display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;align-items:center;justify-content:center;font-size:14px;flex:none}
+.sumbar{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px}
+.sumbar .k{background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:8px 14px;min-width:110px}
+.sumbar .k small{display:block;font-size:11px;color:var(--ink2)}
+.sumbar .k b{font-size:20px}
+.sumbar .k.bad b{color:var(--warn)}
+.sumbar .k.ok b{color:var(--ok)}
+.sumbar .empty{flex:1;padding:12px}
+.errbox{border:1px solid #E7B4B4;background:#FBEDED;border-radius:4px;padding:14px 16px;color:#7A1F1F}
+.errbox b{display:block;margin-bottom:4px}
+.errbox details{margin-top:8px;border:0;padding:0}
+.errbox code{font-size:11px;word-break:break-all}
 .steps{display:flex;gap:0;margin-bottom:16px;border:1px solid var(--rule);border-radius:3px;overflow:hidden;background:var(--paper)}
 .step{flex:1;text-align:center;padding:9px 6px;font-size:12.5px;color:var(--ink2);border-right:1px solid var(--rule)}
 .step:last-child{border-right:0}
@@ -189,69 +210,104 @@ footer button{white-space:nowrap}
 
 <!-- ══ 總部 ══ -->
 <section id="hq" hidden>
-  <div class="steps" id="steps">
-    <span class="step on" data-n="1">① 匯入大禾</span><span class="step" data-n="2">② 檢查縮名</span>
-    <span class="step" data-n="3">③ 選門市</span><span class="step" data-n="4">④ 發布</span>
-  </div>
-  <p class="eyebrow">匯入大禾 F18 發貨對帳單</p>
-  <div class="drop" id="drop" tabindex="0" role="button">
-    <b>把 .xls 檔拖進來，或點這裡選檔</b>
-    <span>F.對帳 → F18 查詢【發貨-發貨退回對帳資料】</span>
-  </div>
-  <input type="file" id="file" accept=".xls,.htm,.html" hidden>
-  <p class="hint" id="impInfo"></p>
-  <div class="tabs" id="storeTabs"></div>
+  <nav class="hqnav" id="hqnav" role="tablist">
+    <button data-pane="work" class="on">📦 日常作業</button>
+    <button data-pane="pub">📋 發布紀錄</button>
+    <button data-pane="plog">🖨 列印紀錄</button>
+    <button data-pane="staff">👤 人員管理</button>
+    <button data-pane="urls">🔗 門市網址</button>
+    <button data-pane="rules">⚙ 縮名規則</button>
+  </nav>
 
-  <div id="previewWrap" hidden>
-    <p class="eyebrow" style="margin-top:22px">檢查縮名 → 選門市 → 發布</p>
-    <div id="preview"></div>
-    <p class="pubmsg" id="pubMsg" hidden></p>
-    <div class="btnrow">
-      <button class="primary" id="publishBtn">發布到此店點</button>
-      <button id="publishAll">全部店點一起發布</button>
+  <!-- ── 日常作業 ── -->
+  <div class="hqpane" data-pane="work">
+    <h2 class="hqTitle">建立條碼標籤並發布到門市</h2>
+    <div class="steps" id="steps">
+      <span class="step on" data-n="1">① 匯入大禾</span><span class="step" data-n="2">② 檢查縮名</span>
+      <span class="step" data-n="3">③ 選門市</span><span class="step" data-n="4">④ 發布</span>
     </div>
-    <p class="hint">發布後門市開啟自己的網址就會看到，不需要傳任何東西。</p>
+    <div class="sumbar" id="sumbar"></div>
+
+    <div class="card">
+      <h3 class="cardTitle"><i class="big">1</i>匯入大禾 F18 發貨對帳單</h3>
+      <div class="drop" id="drop" tabindex="0" role="button">
+        <b>📂 把 .xls 檔拖進來，或點這裡選檔</b>
+        <span>大禾：F.對帳 → F18 查詢【發貨-發貨退回對帳資料】→ 匯出 Excel（不要用 Excel 打開再存檔）</span>
+      </div>
+      <input type="file" id="file" accept=".xls,.htm,.html" hidden>
+      <p class="hint" id="impInfo"></p>
+    </div>
+
+    <div id="previewWrap" hidden>
+      <div class="card">
+        <h3 class="cardTitle"><i class="big">2</i>檢查縮名<small>（超過 36 字的會標橘色，直接在「條碼顯示名稱」欄修改）</small></h3>
+        <p class="hint" style="margin:0 0 4px"><b>③ 選門市：</b>點下面的店名切換，每間店分開檢查。</p>
+        <div class="tabs" id="storeTabs"></div>
+        <div id="preview" style="margin-top:12px"></div>
+      </div>
+      <div class="card">
+        <h3 class="cardTitle"><i class="big">4</i>確認並發布</h3>
+        <div id="pubSummary"></div>
+        <p class="pubmsg" id="pubMsg" hidden></p>
+        <div class="btnrow">
+          <button class="primary" id="publishBtn">發布到此店點</button>
+          <button id="publishAll">全部店點一起發布</button>
+        </div>
+        <p class="hint">發布後門市重新整理自己的網頁就會看到，不需要另外傳檔案。同一張發貨單重複發布時，系統會先問要不要覆蓋。</p>
+      </div>
+    </div>
   </div>
 
-  <details>
-    <summary>縮名規則設定</summary>
-    <div class="grid" style="margin-top:12px">
-      <label class="f"><span>直接刪除的詞（逗號分隔）</span><textarea id="brands"></textarea></label>
-      <label class="f"><span>縮寫對照（一行一組，# 開頭為註解）</span><textarea id="subs" style="min-height:190px"></textarea></label>
-    </div>
-    <div class="btnrow"><button id="reapply">重新套用</button><button id="resetRules">還原預設</button></div>
-    <p class="hint">廠商識別碼 <code>(台)</code> <code>(廣)</code> <code>(普)</code> 受系統保護，任何規則都不會刪掉它們。</p>
-  </details>
+  <!-- ── 發布紀錄 ── -->
+  <div class="hqpane" data-pane="pub" hidden>
+    <h2 class="hqTitle">發布紀錄</h2>
+    <p class="hint" style="margin:0 0 10px">刪除後門市就看不到那批到貨（已印出的標籤不受影響），無法復原。</p>
+    <div id="history"></div>
+  </div>
 
-  <details>
-    <summary>門市網址（各店存成書籤）</summary>
-    <div id="urls" style="margin-top:10px"></div>
-  </details>
-
-  <details id="staffBox">
-    <summary>人員管理（列印人員名單與個人密碼）</summary>
-    <div class="btnrow" style="margin:10px 0;flex-wrap:wrap;gap:8px">
-      <select id="stStore" style="width:auto"></select>
-      <input type="text" id="stName" placeholder="姓名" style="width:140px">
-      <input type="text" id="stPin" placeholder="密碼（4 位數）" inputmode="numeric" maxlength="8" style="width:150px">
-      <button class="primary" id="stAdd">新增人員</button>
-    </div>
-    <p class="hint" style="margin:0 0 8px">標示「預設密碼」的人還在用 0000，請請他本人想一組 4 位數，由總部按「改密碼」設定。</p>
-    <div id="staffList"></div>
-  </details>
-
-  <details id="plogBox">
-    <summary>列印紀錄（各店印了哪些標籤、印過幾次）</summary>
-    <div class="btnrow" style="margin:10px 0"><select id="plogStore" style="width:auto"><option value="">全部店點</option></select>
+  <!-- ── 列印紀錄 ── -->
+  <div class="hqpane" data-pane="plog" hidden id="plogBox">
+    <h2 class="hqTitle">列印紀錄</h2>
+    <div class="btnrow" style="margin:0 0 10px"><select id="plogStore" style="width:auto"><option value="">全部店點</option></select>
       <select id="plogWho" style="width:auto"><option value="">全部人員</option></select>
-      <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="plogDup"> 只看重複列印</label></div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" id="plogDup"> 只看重複列印</label>
+      <button id="plogReload">重新整理</button></div>
     <div id="plog"></div>
-  </details>
+  </div>
 
-  <details>
-    <summary>發布紀錄</summary>
-    <div id="history" style="margin-top:10px"></div>
-  </details>
+  <!-- ── 人員管理 ── -->
+  <div class="hqpane" data-pane="staff" hidden id="staffBox">
+    <h2 class="hqTitle">人員管理</h2>
+    <div class="card">
+      <h3 class="cardTitle" style="font-size:15px">新增人員</h3>
+      <div class="btnrow" style="margin:0;flex-wrap:wrap;gap:8px">
+        <select id="stStore" style="width:auto"></select>
+        <input type="text" id="stName" placeholder="姓名" style="width:140px">
+        <input type="password" id="stPin" placeholder="密碼（4 位數）" inputmode="numeric" maxlength="4" autocomplete="new-password" style="width:150px">
+        <button class="primary" id="stAdd">新增人員</button>
+      </div>
+      <p class="hint" style="margin:8px 0 0">密碼留空＝預設 0000。標「預設密碼」的人請盡快改成個人密碼。</p>
+    </div>
+    <div id="staffList"></div>
+  </div>
+
+  <!-- ── 門市網址 ── -->
+  <div class="hqpane" data-pane="urls" hidden>
+    <h2 class="hqTitle">門市網址</h2>
+    <p class="hint" style="margin:0 0 10px">請各店把自己的網址存成書籤。</p>
+    <div id="urls"></div>
+  </div>
+
+  <!-- ── 縮名規則 ── -->
+  <div class="hqpane" data-pane="rules" hidden>
+    <h2 class="hqTitle">縮名規則</h2>
+    <div class="grid">
+      <label class="f"><span>直接刪除的詞（逗號分隔）</span><textarea id="brands"></textarea></label>
+      <label class="f"><span>縮寫對照（一行一組，# 開頭為註解）</span><textarea id="subs" style="min-height:260px"></textarea></label>
+    </div>
+    <div class="btnrow"><button class="primary" id="reapply">儲存並重新套用</button><button id="resetRules">還原預設</button></div>
+    <p class="hint">廠商識別碼 <code>(台)</code> <code>(廣)</code> <code>(普)</code> 受系統保護，任何規則都不會刪掉它們。iPhone、Apple Watch 的縮名寫在程式裡，不在這裡設定。</p>
+  </div>
 </section>
 
 <!-- ══ 門市 ══ -->
@@ -811,14 +867,14 @@ function applyRole(){
   if(admin){
     ROLE='hq';MYSTORE='';
     $('roleBadge').textContent='總部';$('roleBadge').className='badge';
-    $('hq').hidden=false;$('store').hidden=true;initHQ();
+    $('hq').hidden=false;$('store').hidden=true;document.querySelector('footer').hidden=true;initHQ();
   }else{
     ROLE='store';
     const k=AUTH.store||'';
     MYSTORE=STORE_KEYS[k]||'';
     if(WANT&&WANT!==k){toast('這個帳號屬於 '+(STORE_KEYS[k]||'其他門市')+'，已自動切換');}
     $('roleBadge').textContent=MYSTORE||'門市';$('roleBadge').className='badge store';
-    $('hq').hidden=true;$('store').hidden=false;renderStorePage();
+    $('hq').hidden=true;$('store').hidden=false;document.querySelector('footer').hidden=false;renderStorePage();
   }
 }
 $('pwGo').onclick=async()=>{
@@ -852,7 +908,9 @@ let ALL=[], CUR='';
 
 function initHQ(){
   $('brands').value=RULES.brands; $('subs').value=RULES.subs;
-  renderUrls(); renderHistory(); if(ALL.length){renderTabs();renderPreview();}
+  if(ALL.length){renderTabs();renderPreview();} renderSummary();
+  let pn='work';try{pn=sessionStorage.getItem('bc:pane')||'work';}catch(e){}
+  showPane(pn);
 }
 
 async function handleFile(f){
@@ -863,11 +921,12 @@ async function handleFile(f){
     try{text=new TextDecoder('big5').decode(buf);}catch(e){text=new TextDecoder('utf-8').decode(buf);}
     if(!/<\s*t[rd]/i.test(text))text=new TextDecoder('utf-8').decode(buf);
     const rows=parseReport(text);
-    if(!rows.length){toast('讀不到明細，請確認是 F18 發貨對帳單');return;}
-    ALL=rows;
+    if(!/\.(xls|htm|html)$/i.test(f.name||'')){toast('檔案格式不支援，請選擇大禾匯出的 .xls 檔');return;}
+    if(!rows.length){$('impInfo').textContent='❌ 讀不到明細：請確認是 F18 發貨對帳單，而且是大禾直接匯出的原檔（用 Excel 另存過會讀不到）。';toast('讀不到明細，請確認是 F18 發貨對帳單');return;}
+    ALL=rows; LASTFILE=f.name||'';
     const stores=[...new Set(ALL.map(r=>r.store||'（未標示）'))];
     CUR=stores[0];
-    $('impInfo').textContent='讀取 '+ALL.length+' 筆，共 '+stores.length+' 個店點。';
+    $('impInfo').textContent='✅ 資料匯入完成：'+ALL.length+' 筆，共 '+stores.length+' 個店點。請往下檢查商品名稱。';
     $('previewWrap').hidden=false;
     renderTabs(); renderPreview(); setStep(2);
     toast('已匯入 '+ALL.length+' 筆');
@@ -909,8 +968,9 @@ function updatePublishState(){
   const msg=$('pubMsg');
   $('publishBtn').disabled=n>0;
   $('publishAll').disabled=overCount(ALL)>0;
-  msg.textContent=n?('尚有 '+n+' 筆條碼名稱超過限制，請修正後再發布'):'';
+  msg.textContent=n?('有 '+n+' 筆商品名稱超過 36 字，請在上面修正後再發布'):'';
   msg.hidden=!n;
+  renderSummary();
 }
 function renderPreview(){
   const list=curItems();
@@ -958,7 +1018,7 @@ $('reapply').onclick=()=>{
   RULES={brands:$('brands').value,subs:$('subs').value};
   DB.saveRules(RULES);
   ALL=ALL.map(r=>Object.assign({},r,{label_name:guardVendor(r.original_name,shorten(r.original_name))}));
-  renderPreview(); toast('已重新套用');
+  renderPreview(); toast('✅ 規則已儲存'+(ALL.length?'，並重新套用到目前匯入的資料':''));
 };
 $('resetRules').onclick=()=>{
   $('brands').value=DEF_BRANDS;$('subs').value=DEF_SUBS;$('reapply').click();
@@ -986,23 +1046,73 @@ async function doPublish(storeName,silent){
   }
   return total;
 }
+let PUBLISHING=false;
+function lockPublish(on){PUBLISHING=on;$('publishBtn').disabled=on||overCount(curItems())>0;$('publishAll').disabled=on||overCount(ALL)>0;
+  $('publishBtn').textContent=on?'發布中…':'發布到此店點';}
 $('publishBtn').onclick=async()=>{
-  const n=await doPublish(CUR);
-  if(n){renderHistory();setStep(4);toast('已發布 '+n+' 筆到 '+CUR);}
+  if(PUBLISHING)return;
+  const cur=curItems();
+  if(!confirm('確認發布？\n\n門市：'+CUR+'\n商品：'+cur.length+' 筆\n標籤：'+labelTotal(cur)+' 張'))return;
+  lockPublish(true);
+  try{const n=await doPublish(CUR);
+    if(n){setStep(4);toast('✅ 發布成功：'+n+' 筆已送到 '+CUR);}
+    else toast('這次沒有發布任何資料');}
+  finally{lockPublish(false);updatePublishState();}
 };
 $('publishAll').onclick=async()=>{
+  if(PUBLISHING)return;
   const stores=[...new Set(ALL.map(r=>r.store||'（未標示）'))];
-  let t=0,ok=0; for(const s of stores){const n=await doPublish(s);if(n){t+=n;ok++;}}
-  renderHistory(); if(ok)setStep(4);
-  toast('已發布 '+ok+'/'+stores.length+' 個店點，共 '+t+' 筆');
+  if(!confirm('確認全部發布？\n\n'+stores.map(s=>{const l=ALL.filter(r=>(r.store||'（未標示）')===s);return '・'+s+'：'+l.length+' 筆、'+labelTotal(l)+' 張';}).join('\n')))return;
+  lockPublish(true);
+  try{let t=0,ok=0; for(const s of stores){const n=await doPublish(s);if(n){t+=n;ok++;}}
+    if(ok)setStep(4);
+    toast(ok===stores.length?('✅ 全部發布成功：'+ok+' 個店點，共 '+t+' 筆'):('⚠ 部分完成：'+ok+'/'+stores.length+' 個店點，共 '+t+' 筆，請到「發布紀錄」確認'));}
+  finally{lockPublish(false);updatePublishState();}
 };
 
 function renderUrls(){
   const base=location.href.split('?')[0].split('#')[0];
-  $('urls').innerHTML='<table><thead><tr><th style="width:110px">門市</th><th>固定網址</th></tr></thead><tbody>'
-   +Object.keys(STORE_KEYS).map(k=>'<tr><td>'+esc(STORE_KEYS[k])+'</td>'
-     +'<td class="c" style="word-break:break-all">'+esc(base)+'?s='+k+'</td></tr>').join('')
-   +'</tbody></table><p class="hint">目前是本機測試版，網址只在這台電腦有效。接上雲端後，這些網址就能給門市使用。</p>';
+  $('urls').innerHTML='<table><thead><tr><th style="width:110px">門市</th><th>固定網址</th><th style="width:150px"></th></tr></thead><tbody>'
+   +Object.keys(STORE_KEYS).map(k=>{const u=base+'?s='+k;return '<tr><td><b>'+esc(STORE_KEYS[k])+'</b></td>'
+     +'<td class="c" style="word-break:break-all">'+esc(u)+'</td>'
+     +'<td><button class="mini" data-copy="'+esc(u)+'">複製</button> <a class="mini btnlink" href="'+esc(u)+'" target="_blank" rel="noopener">開啟</a></td></tr>';}).join('')
+   +'</tbody></table><p class="hint">'+(CLOUD?'門市打開網址後，用自己的店號帳號登入即可。':'目前是本機測試版，網址只在這台電腦有效。')+'</p>';
+  $('urls').querySelectorAll('[data-copy]').forEach(b=>b.onclick=async()=>{
+    try{await navigator.clipboard.writeText(b.dataset.copy);toast('已複製網址');}catch(e){toast('無法自動複製，請手動反白複製');}
+  });
+}
+/* 錯誤畫面：使用者看得懂的說明＋重試，技術細節收在下面 */
+function errBox(title,hint,e,retry){
+  return '<div class="errbox"><b>⚠ '+esc(title)+'</b>'+esc(hint)
+   +'<div class="btnrow" style="margin-top:10px"><button class="mini" onclick="'+retry+'()">重試</button></div>'
+   +'<details><summary>技術資訊（給系統管理者）</summary><code>'+esc(e&&e.message||String(e))+'</code></details></div>';
+}
+/* 總部分頁 */
+function showPane(name){
+  document.querySelectorAll('#hqnav button').forEach(b=>b.classList.toggle('on',b.dataset.pane===name));
+  document.querySelectorAll('.hqpane').forEach(p=>p.hidden=p.dataset.pane!==name);
+  if(name==='pub')renderHistory();
+  if(name==='plog')renderPrintLog();
+  if(name==='staff')renderStaff();
+  if(name==='urls')renderUrls();
+  try{sessionStorage.setItem('bc:pane',name);}catch(e){}
+}
+document.querySelectorAll('#hqnav button').forEach(b=>b.onclick=()=>showPane(b.dataset.pane));
+/* 日常作業摘要 */
+let LASTFILE='';
+function labelTotal(list){return list.reduce((n,it)=>n+(+it.qty||1),0);}
+function renderSummary(){
+  const box=$('sumbar');if(!box)return;
+  if(!ALL.length){box.innerHTML='<div class="empty">尚未匯入資料，請先上傳大禾 F18 對帳單。</div>';return;}
+  const stores=[...new Set(ALL.map(r=>r.store||'（未標示）'))], over=overCount(ALL);
+  box.innerHTML='<div class="k"><small>檔案</small><b style="font-size:13px">'+esc(LASTFILE||'—')+'</b></div>'
+   +'<div class="k"><small>商品筆數</small><b>'+ALL.length+'</b></div>'
+   +'<div class="k"><small>門市數</small><b>'+stores.length+'</b></div>'
+   +'<div class="k"><small>標籤總張數</small><b>'+labelTotal(ALL)+'</b></div>'
+   +'<div class="k '+(over?'bad':'ok')+'"><small>名稱過長</small><b>'+(over?over+' 筆':'✓ 0')+'</b></div>';
+  const cur=curItems(), n=overCount(cur);
+  $('pubSummary').innerHTML='<p style="margin:0 0 6px;font-size:15px">目前店點：<b style="color:var(--accent);font-size:18px">'+esc(CUR)+'</b>　'
+   +cur.length+' 筆商品、'+labelTotal(cur)+' 張標籤'+(n?'，<b style="color:var(--warn)">'+n+' 筆名稱過長</b>':'，<span style="color:var(--ok)">名稱都 OK</span>')+'</p>';
 }
 
 async function renderPrintLog(){
@@ -1011,7 +1121,7 @@ async function renderPrintLog(){
   if(sel.options.length<2)for(const k in STORE_KEYS){const o=document.createElement('option');o.value=STORE_KEYS[k];o.textContent=STORE_KEYS[k];sel.add(o);}
   box.innerHTML='<div class="empty">讀取中…</div>';
   let rows=[];
-  try{rows=await DB.prints(sel.value);}catch(e){box.innerHTML='<div class="empty">讀不到列印紀錄：'+esc(e.message)+'<br>（雲端要先建立 print_logs 資料表）</div>';return;}
+  try{rows=await DB.prints(sel.value);}catch(e){box.innerHTML=errBox('暫時無法讀取列印紀錄','請確認 Supabase 已執行 print_logs.sql（以及 staff.sql）。',e,'renderPrintLog');return;}
   const cnt={};for(const r of rows){const k=r.store+'|'+r.barcode;cnt[k]=(cnt[k]||0)+1;}
   const ws=$('plogWho'),cur=ws.value,names=[...new Set(rows.map(r=>r.staff_name).filter(Boolean))].sort();
   ws.innerHTML='<option value="">全部人員</option>'+names.map(n=>'<option'+(n===cur?' selected':'')+'>'+esc(n)+'</option>').join('');
@@ -1025,14 +1135,13 @@ async function renderPrintLog(){
      +'<td class="c" style="'+(n>1?'color:var(--warn);font-weight:700':'')+'">'+n+' 次</td></tr>';}).join('')
    +'</tbody></table></div>'+(rows.length>300?'<p class="hint">只顯示最近 300 筆。</p>':'');
 }
-$('plogBox').addEventListener('toggle',()=>{if($('plogBox').open)renderPrintLog();});
-$('plogStore').onchange=renderPrintLog;$('plogDup').onchange=renderPrintLog;$('plogWho').onchange=renderPrintLog;
+$('plogStore').onchange=renderPrintLog;$('plogReload').onclick=renderPrintLog;$('plogDup').onchange=renderPrintLog;$('plogWho').onchange=renderPrintLog;
 /* 人員管理 */
 const STAFF_STORES=['鼎山店','陽明店','後昌店','仁雄店','凱旋店','總部'];
 async function renderStaff(){
   const sel=$('stStore'); if(!sel.options.length)sel.innerHTML=STAFF_STORES.map(x=>'<option>'+x+'</option>').join('');
   let list=[];
-  try{list=await DB.listStaff('');}catch(e){$('staffList').innerHTML='<div class="empty">讀不到人員名單：'+esc(e.message)+'<br>（雲端要先執行 staff.sql）</div>';return;}
+  try{list=await DB.listStaff('');}catch(e){$('staffList').innerHTML=errBox('暫時無法讀取人員名單','請確認 Supabase 已依序執行 print_logs.sql 和 staff.sql。',e,'renderStaff');return;}
   if(!list.length){$('staffList').innerHTML='<div class="empty">還沒有人員。</div>';return;}
   list.sort((a,b)=>STAFF_STORES.indexOf(a.store)-STAFF_STORES.indexOf(b.store)||String(a.name).localeCompare(b.name));
   $('staffList').innerHTML='<div class="scrollx"><table style="min-width:560px"><thead><tr><th style="width:80px">店點</th><th>姓名</th><th style="width:120px">狀態</th><th style="width:190px"></th></tr></thead><tbody>'
@@ -1052,14 +1161,16 @@ async function renderStaff(){
 }
 $('stAdd').onclick=async()=>{
   const name=$('stName').value.trim(),pin=$('stPin').value.trim()||'0000';
+  if(!confirm('新增人員：'+$('stStore').value+'　'+name+(pin==='0000'?'\n（使用預設密碼 0000）':'')))return;
   if(!name){toast('請輸入姓名');return;}
   if(!/^\d{4}$/.test(pin)){toast('密碼要是 4 位數字');return;}
   try{await DB.saveStaff(null,$('stStore').value,name,pin,true);$('stName').value='';$('stPin').value='';toast('已新增 '+name);renderStaff();}
   catch(e){toast('新增失敗：'+e.message);}
 };
-$('staffBox').addEventListener('toggle',()=>{if($('staffBox').open)renderStaff();});
+
 async function renderHistory(){
-  const b=await DB.batches();
+  let b=[];
+  try{b=await DB.batches();}catch(e){$('history').innerHTML=errBox('暫時無法讀取發布紀錄','請確認網路連線，或稍後再試。',e,'renderHistory');return;}
   if(!b.length){$('history').innerHTML='<div class="empty">還沒有發布紀錄。</div>';return;}
   $('history').innerHTML='<table><thead><tr><th>時間</th><th>店點</th><th>單號</th><th>筆數</th><th style="width:60px"></th></tr></thead><tbody>'
    +b.slice(0,30).map(x=>'<tr><td class="c">'+new Date(x.published_at).toLocaleString('zh-TW')+'</td>'
