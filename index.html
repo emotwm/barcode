@@ -244,6 +244,22 @@ td{font-size:14.5px}
 .step{font-size:14px}
 .hint,.note{font-size:13px}
 .drop span{font-size:13.5px}.drop b,.drop strong{font-size:16px}.empty{font-size:14px}
+
+.stGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:14px}
+.stCard{background:var(--paper);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.stHead{background:var(--ink);color:#fff;font-family:var(--serif);font-weight:900;font-size:16px;padding:8px 14px;display:flex;align-items:baseline;gap:8px}
+.stHead small{font-family:var(--sans);font-weight:400;font-size:12.5px;opacity:.75}
+.stRow{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:6px;padding:7px 12px;border-top:1px solid var(--liner)}
+.stRow:first-of-type{border-top:0}
+.stRow.off{opacity:.5}
+.stName{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;min-width:0}
+.stName b{font-size:15.5px}
+.stName small{font-size:11.5px;color:var(--ink2);border:1px solid var(--rule);border-radius:10px;padding:0 6px}
+.stSt{font-size:12.5px;color:var(--ink2)}
+.stSt.warn{color:var(--warn);font-weight:700}
+.stRow select{padding:3px 4px;font-size:13.5px;width:auto}
+.stRow .mini{padding:4px 9px;font-size:13px}
+@media (max-width:520px){.stGrid{grid-template-columns:1fr}.stRow{grid-template-columns:1fr auto;}.stRow select{grid-column:1}}
 </style>
 </head>
 <body>
@@ -1251,12 +1267,18 @@ async function renderStaff(){
   try{list=await DB.listStaff('');}catch(e){$('staffList').innerHTML=errBox('暫時無法讀取人員名單','請確認 Supabase 已依序執行 print_logs.sql 和 staff.sql。',e,'renderStaff');return;}
   if(!list.length){$('staffList').innerHTML='<div class="empty">還沒有人員。</div>';return;}
   list.sort((a,b)=>STAFF_STORES.indexOf(a.store)-STAFF_STORES.indexOf(b.store)||String(a.name).localeCompare(b.name));
-  $('staffList').innerHTML='<div class="scrollx"><table style="min-width:560px"><thead><tr><th style="width:110px">店點（可調店）</th><th>姓名</th><th style="width:120px">狀態</th><th style="width:190px"></th></tr></thead><tbody>'
-   +list.map(x=>'<tr'+(x.active?'':' style="opacity:.5"')+'><td><select class="stMove" data-id="'+x.id+'" data-nm="'+esc(x.name)+'" data-from="'+esc(x.store)+'" title="調店：直接選新的店點" style="padding:4px 6px;font:inherit">'+STAFF_STORES.map(st=>'<option'+(st===x.store?' selected':'')+'>'+st+'</option>').join('')+'</select></td><td><b>'+esc(x.name)+'</b>'+(list.filter(y=>y.name===x.name).length>1?' <span style="color:#888;font-size:12px">（'+list.filter(y=>y.name===x.name).length+' 店）</span>':'')+'</td>'
-     +'<td>'+(x.active?(x.default_pin?'<span style="color:var(--warn);font-weight:700">預設密碼</span>':'使用中'):'已停用')+'</td>'
-     +'<td><button class="mini" data-pin="'+x.id+'" data-nm="'+esc(x.name)+'">改密碼</button> '
-     +'<button class="mini" data-act="'+x.id+'" data-on="'+(x.active?0:1)+'">'+(x.active?'停用':'啟用')+'</button></td></tr>').join('')
-   +'</tbody></table></div>';
+  /* 依店點分組成卡片，一排放 2～3 店，不再拉成一整條長表格 */
+  const cnt=n=>list.filter(y=>y.name===n).length;
+  $('staffList').innerHTML='<div class="stGrid">'+STAFF_STORES.filter(st=>list.some(x=>x.store===st)).map(st=>{
+    const ppl=list.filter(x=>x.store===st);
+    return '<div class="stCard"><div class="stHead">'+st+'<small>'+ppl.filter(x=>x.active).length+' 人</small></div>'
+     +ppl.map(x=>'<div class="stRow'+(x.active?'':' off')+'">'
+       +'<div class="stName"><b>'+esc(x.name)+'</b>'+(cnt(x.name)>1?'<small>'+cnt(x.name)+' 店</small>':'')
+       +'<span class="stSt'+(x.active&&x.default_pin?' warn':'')+'">'+(x.active?(x.default_pin?'預設密碼':'使用中'):'已停用')+'</span></div>'
+       +'<select class="stMove" data-id="'+x.id+'" data-nm="'+esc(x.name)+'" data-from="'+esc(x.store)+'" title="調店：直接選新的店點">'+STAFF_STORES.map(o=>'<option'+(o===x.store?' selected':'')+'>'+o+'</option>').join('')+'</select>'
+       +'<button class="mini" data-pin="'+x.id+'" data-nm="'+esc(x.name)+'">改密碼</button>'
+       +'<button class="mini" data-act="'+x.id+'" data-on="'+(x.active?0:1)+'">'+(x.active?'停用':'啟用')+'</button></div>').join('')
+     +'</div>';}).join('')+'</div><p class="hint">要調店：直接在名字右邊的下拉選單選新的店。</p>';
   $('staffList').querySelectorAll('[data-pin]').forEach(b=>b.onclick=async()=>{
     const pin=prompt('設定 '+b.dataset.nm+' 的新密碼（4 位數字）：');if(pin==null)return;
     if(!/^\d{4}$/.test(pin.trim())){toast('密碼要是 4 位數字');return;}
