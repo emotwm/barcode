@@ -71,16 +71,33 @@ td.qty input{width:56px;font-family:var(--mono);font-size:12px;padding:5px 6px;t
 .hqnav button{border:0;border-bottom:3px solid transparent;margin-bottom:-2px;background:none;padding:10px 14px;font-size:14px;font-weight:600;color:var(--ink2);border-radius:0}
 .hqnav button:hover{color:var(--ink)}
 .hqnav button.on{color:var(--accent);border-bottom-color:var(--accent)}
+#hq,#store{max-width:1180px;margin:0 auto}
+.navcnt{display:inline-block;margin-left:6px;background:var(--warn);color:#fff;border-radius:10px;font-size:11px;padding:0 7px;line-height:18px}
+.navcnt:empty{display:none}
+#store .storeTitle{margin:0 0 10px;font-size:20px}
+#store .stbtn{padding:7px 14px;font-size:13px}
+#store .bhead{margin-bottom:8px;padding:7px 12px}
+#store .rowitem{padding:8px 12px;margin-bottom:6px}
+#store .btnrow{margin:0 0 8px!important;gap:6px}
+input.rpInput{font-size:15px!important;padding:9px 12px!important}
+#urls table{width:auto}
+#urls td,#urls th{padding-right:28px}
 .btnlink{display:inline-block;border:1px solid var(--ink);padding:4px 10px;font-size:11px;font-weight:500;color:var(--ink);text-decoration:none;border-radius:2px}
 .hqTitle{font-size:21px;margin:0 0 12px;font-weight:800}
-.card{background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:16px 18px;margin-bottom:14px}
-.cardTitle{margin:0 0 10px;font-size:17px;color:var(--accent);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.card{background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:12px 14px;margin-bottom:10px}
+.cardHead{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;margin-bottom:6px}
+.drop.small{padding:8px 12px;text-align:left;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.drop.small b{display:inline;font-size:13px;margin:0}
+#hq .hqTitle{font-size:18px;margin:0 0 8px}
+#hq .steps{margin-bottom:10px}
+#hq .step{padding:6px 6px}
+.cardTitle{margin:0 0 8px;font-size:16px;color:var(--accent);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .cardTitle small{font-size:12px;color:var(--ink2);font-weight:500}
 .cardTitle .big{font-style:normal;display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;align-items:center;justify-content:center;font-size:14px;flex:none}
-.sumbar{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px}
-.sumbar .k{background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:8px 14px;min-width:110px}
-.sumbar .k small{display:block;font-size:11px;color:var(--ink2)}
-.sumbar .k b{font-size:20px}
+.sumbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.sumbar .k{background:var(--paper);border:1px solid var(--rule);border-radius:4px;padding:5px 12px;display:flex;align-items:baseline;gap:8px}
+.sumbar .k small{font-size:11px;color:var(--ink2)}
+.sumbar .k b{font-size:16px}
 .sumbar .k.bad b{color:var(--warn)}
 .sumbar .k.ok b{color:var(--ok)}
 .sumbar .empty{flex:1;padding:12px}
@@ -126,7 +143,7 @@ td.qty input{width:56px;font-family:var(--mono);font-size:12px;padding:5px 6px;t
 .rowitem:not(.on) .nm::after{content:'不印';display:inline-block;margin-left:8px;font-size:11px;color:var(--ink2);border:1px solid var(--rule);padding:0 6px;border-radius:2px;vertical-align:middle;font-weight:500}
 #extras .rowitem,#qres .rowitem{opacity:1;background:var(--paper)}
 #extras .rowitem .nm::after,#qres .rowitem .nm::after{content:none}
-.rpWhen{margin:0 0 12px;font-size:14px}
+.rpWhen{margin:0 0 8px;font-size:13px}
 .rpSteps{list-style:none;padding:0;margin:0 0 14px;display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px}
 .rpSteps li{display:flex;align-items:flex-start;gap:7px;line-height:22px}
 .rpSteps .n{font-style:normal;display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;
@@ -240,20 +257,23 @@ footer button{white-space:nowrap}
 
     <div id="previewWrap" hidden>
       <div class="card">
-        <h3 class="cardTitle"><i class="big">2</i>檢查縮名<small>（超過 36 字的會標橘色，直接在「條碼顯示名稱」欄修改）</small></h3>
-        <p class="hint" style="margin:0 0 4px"><b>③ 選門市：</b>點下面的店名切換，每間店分開檢查。</p>
-        <div class="tabs" id="storeTabs"></div>
-        <div id="preview" style="margin-top:12px"></div>
+        <div class="cardHead">
+          <h3 class="cardTitle" style="margin:0"><i class="big">2</i>檢查縮名</h3>
+          <span class="hint" style="margin:0"><b>③ 選門市</b>（點店名切換）</span>
+          <div class="tabs" id="storeTabs" style="margin:0"></div>
+        </div>
+        <p class="hint" style="margin:0 0 8px">超過 36 字的會標橘色，直接在「條碼顯示名稱」欄修改。</p>
+        <div id="preview"></div>
       </div>
       <div class="card">
-        <h3 class="cardTitle"><i class="big">4</i>確認並發布</h3>
-        <div id="pubSummary"></div>
-        <p class="pubmsg" id="pubMsg" hidden></p>
-        <div class="btnrow">
+        <div class="cardHead">
+          <h3 class="cardTitle" style="margin:0"><i class="big">4</i>確認並發布</h3>
+          <div id="pubSummary" style="flex:1"></div>
           <button class="primary" id="publishBtn">發布到此店點</button>
           <button id="publishAll">全部店點一起發布</button>
         </div>
-        <p class="hint">發布後門市重新整理自己的網頁就會看到，不需要另外傳檔案。同一張發貨單重複發布時，系統會先問要不要覆蓋。</p>
+        <p class="pubmsg" id="pubMsg" hidden></p>
+        <p class="hint" style="margin:6px 0 0">發布後門市重新整理網頁就會看到。同一張發貨單重複發布時，系統會先問要不要覆蓋。</p>
       </div>
     </div>
   </div>
@@ -314,31 +334,32 @@ footer button{white-space:nowrap}
 <section id="store" hidden>
   <div id="storeMain" hidden>
     <h2 class="storeTitle"><span id="storeName"></span><span class="sep">｜</span>條碼列印</h2>
-    <div class="reprint step1">
-      <h3 class="rpTitle"><i class="big">1</i>勾選要印的到貨商品</h3>
-      <p class="rpWhen">總部發貨後，商品會自動出現在這裡。<b>有打勾 ✅ 的就會印</b>，不想印的就把勾勾點掉。張數可以自己改。</p>
+    <nav class="hqnav" id="stnav">
+      <button data-sp="arr" class="on">📦 到貨列印</button>
+      <button data-sp="search">🔍 補印搜尋<span class="navcnt" id="navExtra"></span></button>
+      <button data-sp="old">📅 以前的到貨</button>
+    </nav>
+    <p class="hint" style="margin:-8px 0 10px">勾選或加入要印的商品 → 按右下角紅色「🖨 列印標籤」→ 目的地選 <b>Godex DT2x</b> 按「列印」。三個分頁加入的商品會一起印。</p>
+
+    <div class="stpane card" data-sp="arr old">
+      <div class="cardHead" id="arrHead">
+        <h3 class="cardTitle" style="margin:0" id="arrTitle">勾選要印的到貨商品</h3>
+        <span class="hint" style="margin:0" id="arrHint"><b>有打勾 ✅ 的就會印</b>，不想印的把勾勾點掉，張數可以改。</span>
+      </div>
       <div id="arrivals"></div>
     </div>
 
-    <div class="reprint">
-      <h3 class="rpTitle"><i class="big">2</i>補印：上面沒有的商品，從這裡找<small>（不需要就跳過）</small></h3>
-      <p class="rpWhen">標籤<b>掉了、破了、貼錯了</b>，或是<b>以前到的貨</b>要重貼，都用這裡。</p>
-      <ol class="rpSteps">
-        <li><i class="n">1</i><span>在框裡打<b>型號或品名</b>（例如 A57、玻璃貼）</span></li>
-        <li><i class="n">2</i><span>找到商品，填張數，按<b>「加入」</b></span></li>
-        <li><i class="n">3</i><span>加入的會跟上面勾選的一起印</span></li>
-      </ol>
+    <div class="stpane card" data-sp="search" hidden>
+      <div class="cardHead">
+        <h3 class="cardTitle" style="margin:0">補印：到貨清單沒有的商品，從這裡找</h3>
+      </div>
+      <p class="hint" style="margin:0 0 8px">標籤<b>掉了、破了、貼錯了</b>要重貼：打型號或品名 → 填張數 → 按<b>「加入」</b>。手機因為每台 IMEI 不同，請從「📅 以前的到貨」補印。</p>
       <div id="extras"></div>
       <input type="text" id="q" class="rpInput" placeholder="🔍 打型號或品名搜尋，例如：A57、玻璃貼、0170502" autocomplete="off">
       <p class="hint" id="qinfo"></p>
+      <div id="qres"></div>
     </div>
-    <div class="reprint step3">
-      <h3 class="rpTitle"><i class="big">3</i>按右下角紅色的「🖨 列印標籤」</h3>
-      <p class="rpWhen" style="margin:0">列印畫面的「目的地」要選 <b>Godex DT2x</b>，然後按「列印」。</p>
-    </div>
-    <div id="qres"></div>
-    <div class="note"><strong>名稱由總部統一制定，門市無法修改。</strong>
-      手機標籤的條碼是該台的 IMEI，補印請從「歷史到貨」找，才會對應到正確的機器。</div>
+    <p class="hint">名稱由總部統一制定，門市無法修改。</p>
   </div>
 </section>
 
@@ -741,9 +762,10 @@ function queueAdd(it,qty){
 }
 function renderExtras(){
   const box=$('extras');if(!box)return;
-  if(!EXTRA.length){box.innerHTML='';return;}
   let n=0;for(const it of EXTRA)n+=it.qty;
-  box.innerHTML='<p class="hint" style="margin:0 0 6px"><b>補印清單（'+n+' 張）</b>　會跟上面勾選的到貨一起印</p>'
+  if($('navExtra'))$('navExtra').textContent=n?n:'';
+  if(!EXTRA.length){box.innerHTML='';return;}
+  box.innerHTML='<p class="hint" style="margin:0 0 6px"><b>補印清單（'+n+' 張）</b>　會跟「到貨列印」勾選的一起印</p>'
    +EXTRA.map((it,i)=>'<div class="rowitem" style="cursor:default">'
      +'<span class="nm">'+esc(it.label_name)+(width(it.label_name)>LIMIT?'<span class="long">名稱過長</span>':'')
      +'<small>'+esc(barcodeOf(it))+'</small>'+pcBadge(it)+'</span>'
@@ -927,7 +949,8 @@ async function handleFile(f){
     const stores=[...new Set(ALL.map(r=>r.store||'（未標示）'))];
     CUR=stores[0];
     $('impInfo').textContent='✅ 資料匯入完成：'+ALL.length+' 筆，共 '+stores.length+' 個店點。請往下檢查商品名稱。';
-    $('previewWrap').hidden=false;
+    $('previewWrap').hidden=false;$('drop').classList.add('small');
+    $('drop').querySelector('b').textContent='📂 換一個檔案：拖進來或點這裡';
     renderTabs(); renderPreview(); setStep(2);
     toast('已匯入 '+ALL.length+' 筆');
   }catch(e){toast('讀檔失敗：'+e.message);}
@@ -975,8 +998,8 @@ function updatePublishState(){
 function renderPreview(){
   const list=curItems();
   if(!list.length){$('preview').innerHTML='<div class="empty">此店點沒有明細。</div>';updatePublishState();return;}
-  $('preview').innerHTML='<div class="scrollx"><table style="min-width:860px"><thead><tr>'
-   +'<th style="width:132px">商品編號／條碼</th><th>大禾原始品名</th><th style="width:270px">條碼顯示名稱</th>'
+  $('preview').innerHTML='<div class="scrollx"><table style="min-width:820px"><thead><tr>'
+   +'<th style="width:150px">商品編號／條碼</th><th style="width:34%">大禾原始品名</th><th>條碼顯示名稱</th>'
    +'<th style="width:62px">寬度</th><th style="width:62px">數量</th><th style="width:44px"></th></tr></thead><tbody>'
    +list.map((it,i)=>{
      const w=width(it.label_name),bad=w>LIMIT,p=splitAtLimit(it.label_name);
@@ -1072,7 +1095,7 @@ $('publishAll').onclick=async()=>{
 
 function renderUrls(){
   const base=location.href.split('?')[0].split('#')[0];
-  $('urls').innerHTML='<table><thead><tr><th style="width:110px">門市</th><th>固定網址</th><th style="width:150px"></th></tr></thead><tbody>'
+  $('urls').innerHTML='<table><thead><tr><th>門市</th><th>固定網址</th><th></th></tr></thead><tbody>'
    +Object.keys(STORE_KEYS).map(k=>{const u=base+'?s='+k;return '<tr><td><b>'+esc(STORE_KEYS[k])+'</b></td>'
      +'<td class="c" style="word-break:break-all">'+esc(u)+'</td>'
      +'<td><button class="mini" data-copy="'+esc(u)+'">複製</button> <a class="mini btnlink" href="'+esc(u)+'" target="_blank" rel="noopener">開啟</a></td></tr>';}).join('')
@@ -1111,7 +1134,7 @@ function renderSummary(){
    +'<div class="k"><small>標籤總張數</small><b>'+labelTotal(ALL)+'</b></div>'
    +'<div class="k '+(over?'bad':'ok')+'"><small>名稱過長</small><b>'+(over?over+' 筆':'✓ 0')+'</b></div>';
   const cur=curItems(), n=overCount(cur);
-  $('pubSummary').innerHTML='<p style="margin:0 0 6px;font-size:15px">目前店點：<b style="color:var(--accent);font-size:18px">'+esc(CUR)+'</b>　'
+  $('pubSummary').innerHTML='<p style="margin:0;font-size:14px">目前店點：<b style="color:var(--accent);font-size:16px">'+esc(CUR)+'</b>　'
    +cur.length+' 筆商品、'+labelTotal(cur)+' 張標籤'+(n?'，<b style="color:var(--warn)">'+n+' 筆名稱過長</b>':'，<span style="color:var(--ok)">名稱都 OK</span>')+'</p>';
 }
 
@@ -1189,6 +1212,8 @@ async function renderStorePage(){
   $('storeMain').hidden=false;
   $('qinfo').textContent='可搜尋本店到過的貨，以及全部商品 '+CAT.length+' 筆。手機因為每台 IMEI 不同，請從「之前的到貨」補印。';
   HIST=[];
+  document.querySelectorAll('#stnav button').forEach(b=>b.classList.toggle('on',b.dataset.sp==='arr'));
+  document.querySelectorAll('.stpane').forEach(p=>p.hidden=!p.dataset.sp.split(' ').includes('arr'));
   await renderArrivals();
   await loadPrintCounts(MYSTORE);
 }
@@ -1242,7 +1267,7 @@ async function renderArrivals(){
   if(!batches.length){
     $('arrivals').innerHTML='<div class="empty">目前沒有到貨資料。<br>總部發布後重新整理就會出現。</div>';return;
   }
-  const days=groupByDate(batches);
+  const days=groupByDate(batches);STDAYS=days;
   const d=days[0];
   $('arrivals').innerHTML=dayHeader(d)
    +'<div class="btnrow" style="margin:0 0 12px"><button class="stbtn" id="selAll">☑ 全部打勾</button>'
@@ -1250,8 +1275,19 @@ async function renderArrivals(){
    +(days.length>1?'<button class="stbtn" id="olderBtn">📅 看以前的到貨（還有 '+(days.length-1)+' 天）</button>':'')+'</div>'
    +d.items.map((it,i)=>itemRow(it,i,true,it.qty)).join('');
   bindDayList(d.items);refreshBadges();
-  const ob=$('olderBtn');if(ob)ob.onclick=()=>renderOlder(days);
+  const ob=$('olderBtn');if(ob)ob.onclick=()=>showStorePane('old');
 }
+let STDAYS=[];
+function showStorePane(name){
+  document.querySelectorAll('#stnav button').forEach(b=>b.classList.toggle('on',b.dataset.sp===name));
+  document.querySelectorAll('.stpane').forEach(p=>p.hidden=!p.dataset.sp.split(' ').includes(name));
+  $('arrTitle').textContent=name==='old'?'以前的到貨':'勾選要印的到貨商品';
+  $('arrHint').innerHTML=name==='old'?'選一天按「打開」，再勾要補印的商品。':'<b>有打勾 ✅ 的就會印</b>，不想印的把勾勾點掉，張數可以改。';
+  if(name==='arr')renderArrivals();
+  if(name==='old')renderOlder(STDAYS);
+  if(name==='search')setTimeout(()=>$('q').focus(),50);
+}
+document.querySelectorAll('#stnav button').forEach(b=>b.onclick=()=>showStorePane(b.dataset.sp));
 async function renderOlder(days){
   ARRSEL=[];rebuildQueue();
   $('arrivals').innerHTML='<div class="btnrow" style="margin-top:0"><button class="stbtn" id="backBtn">← 回最新到貨</button></div>'
@@ -1259,7 +1295,7 @@ async function renderOlder(days){
    +days.map((d,i)=>'<tr><td class="c" style="font-size:14px">'+esc(d.date)+'</td>'
      +'<td class="c" style="font-size:14px">'+d.items.length+'</td>'
      +'<td><button class="stbtn" data-open="'+i+'">打開</button></td></tr>').join('')+'</tbody></table>';
-  $('backBtn').onclick=()=>renderArrivals();
+  $('backBtn').onclick=()=>showStorePane('arr');
   $('arrivals').querySelectorAll('[data-open]').forEach(btn=>btn.onclick=()=>openDay(days[+btn.dataset.open],days));
 }
 function openDay(d,days){
@@ -1305,7 +1341,7 @@ async function doSearch(){
     return '<div class="rowitem" style="cursor:default">'
      +'<span class="nm">'+esc(it.label_name)+(bad?'<span class="long">名稱過長</span>':'')
      +'<small>'+esc(it.original_name)+'</small>'
-     +'<small>'+(it.locked?'手機／唯一序號商品，請從歷史到貨補印':esc(barcodeOf(it))+(it.imei?'　IMEI':(it.serial?'　序號':'')))
+     +'<small>'+(it.locked?'手機／唯一序號商品，請從「📅 以前的到貨」補印':esc(barcodeOf(it))+(it.imei?'　IMEI':(it.serial?'　序號':'')))
      +'　<span class="tag">'+it.src+(it.docno?' '+esc(dateOf(it.docno)):'')+'</span></small>'+(it.locked?'':pcBadge(it))+'</span>'
      +(it.locked?'':'<span class="qwrap">張數 <input type="text" class="rq" data-i="'+i+'" value="1"></span>'
        +'<button class="mini" data-add="'+i+'">加入</button>')
