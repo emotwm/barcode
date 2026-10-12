@@ -275,7 +275,7 @@ footer button{white-space:nowrap}
           <div id="pubSummary" style="flex:1"></div>
           <button class="primary" id="publishBtn">發布到此店點</button>
           <button id="publishAll">全部店點一起發布</button>
-          <button id="hqPrintBtn" title="總部自己用條碼機印出這間店的標籤">🖨 總部直接列印此店</button>
+          <button id="hqPrintBtn" title="總部自己用條碼機印出表格裡勾選的商品">🖨 列印勾選的</button>
         </div>
         <p class="pubmsg" id="pubMsg" hidden></p>
         <p class="hint" style="margin:6px 0 0">發布後門市重新整理網頁就會看到。同一張發貨單重複發布時，系統會先問要不要覆蓋。</p>
@@ -998,18 +998,20 @@ function updatePublishState(){
   $('publishAll').disabled=overCount(ALL)>0;
   msg.textContent=n?('有 '+n+' 筆商品名稱超過 36 字，請在上面修正後再發布'):'';
   msg.hidden=!n;
-  renderSummary();
+  renderSummary();updateHqPrintBtn();
 }
 function renderPreview(){
   const list=curItems();
   if(!list.length){$('preview').innerHTML='<div class="empty">此店點沒有明細。</div>';updatePublishState();return;}
   $('preview').innerHTML='<div class="scrollx"><table style="min-width:820px"><thead><tr>'
+   +'<th style="width:38px;text-align:center" title="勾選要由總部列印的商品"><input type="checkbox" id="pselAll"'+(list.length&&list.every(x=>x._sel)?' checked':'')+'></th>'
    +'<th style="width:150px">商品編號／條碼</th><th style="width:34%">大禾原始品名</th><th>條碼顯示名稱</th>'
    +'<th style="width:62px">寬度</th><th style="width:62px">數量</th><th style="width:44px"></th></tr></thead><tbody>'
    +list.map((it,i)=>{
      const w=width(it.label_name),bad=w>LIMIT,p=splitAtLimit(it.label_name);
      const bc=barcodeOf(it);
      return '<tr class="'+(bad?'over':'')+'">'
+      +'<td style="text-align:center"><input type="checkbox" class="psel" data-i="'+i+'"'+(it._sel?' checked':'')+'></td>'
       +'<td class="c">'+esc(it.product_code||'—')
         +(isUnique(it)?'<br><span class="tag imei">'+(it.imei?'IMEI':'序號')+'</span> '+esc(bc):'')
         +(bad?'<br><span class="long">名稱過長</span>':'')+'</td>'
@@ -1030,8 +1032,11 @@ function renderPreview(){
     const n=document.querySelector('.lab[data-i="'+i+'"]');
     if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(x){}}
   }));
+  $('preview').querySelectorAll('.psel').forEach(el=>el.onchange=()=>{curItems()[+el.dataset.i]._sel=el.checked;
+    const all=$('pselAll');if(all)all.checked=curItems().every(x=>x._sel);updateHqPrintBtn();});
+  const pa=$('pselAll');if(pa)pa.onchange=()=>{curItems().forEach(x=>x._sel=pa.checked);renderPreview();};
   $('preview').querySelectorAll('[data-q]').forEach(el=>el.addEventListener('input',e=>{
-    curItems()[+e.target.dataset.q].qty=Math.max(1,parseInt(e.target.value,10)||1);
+    curItems()[+e.target.dataset.q].qty=Math.max(1,parseInt(e.target.value,10)||1);updateHqPrintBtn();
   }));
   $('preview').querySelectorAll('[data-del]').forEach(el=>el.onclick=()=>{
     const it=curItems()[+el.dataset.del];
@@ -1075,9 +1080,13 @@ async function doPublish(storeName,silent){
   return total;
 }
 /* 總部直接列印：把目前店點的商品放進列印佇列，走跟門市一樣的列印流程（選人員＋密碼、記錄、重複警示） */
+function updateHqPrintBtn(){
+  const sel=curItems().filter(x=>x._sel);
+  $('hqPrintBtn').textContent=sel.length?('🖨 列印勾選的（'+labelTotal(sel)+' 張）'):'🖨 列印勾選的';
+}
 $('hqPrintBtn').onclick=async()=>{
-  const cur=curItems();
-  if(!cur.length){toast('這間店沒有商品');return;}
+  const cur=curItems().filter(x=>x._sel);
+  if(!cur.length){toast('請先在表格最左邊勾選要列印的商品');return;}
   const n=overCount(cur); if(n){toast('有 '+n+' 筆名稱超過 36 字，請先修正再列印');return;}
   if(!Object.keys(PCOUNT).length)await loadPrintCounts('');
   ARRSEL=cur.map(it=>Object.assign({},it)); EXTRA=[]; rebuildQueue();
