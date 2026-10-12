@@ -72,6 +72,10 @@ td.qty input{width:56px;font-family:var(--mono);font-size:12px;padding:5px 6px;t
 .hqnav button:hover{color:var(--ink)}
 .hqnav button.on{color:var(--accent);border-bottom-color:var(--accent)}
 #hq,#store{max-width:1180px;margin:0 auto}
+.itemgrid,#extras,#qres{display:grid;grid-template-columns:repeat(auto-fill,minmax(460px,1fr));gap:6px 10px}
+.itemgrid .rowitem,#extras .rowitem,#qres .rowitem{margin:0}
+#extras>p,#qres>p,#qres>.empty{grid-column:1/-1}
+@media (max-width:520px){.itemgrid,#extras,#qres{grid-template-columns:1fr}}
 .navcnt{display:inline-block;margin-left:6px;background:var(--warn);color:#fff;border-radius:10px;font-size:11px;padding:0 7px;line-height:18px}
 .navcnt:empty{display:none}
 #store .storeTitle{margin:0 0 10px;font-size:20px}
@@ -271,6 +275,7 @@ footer button{white-space:nowrap}
           <div id="pubSummary" style="flex:1"></div>
           <button class="primary" id="publishBtn">發布到此店點</button>
           <button id="publishAll">全部店點一起發布</button>
+          <button id="hqPrintBtn" title="總部自己用條碼機印出這間店的標籤">🖨 總部直接列印此店</button>
         </div>
         <p class="pubmsg" id="pubMsg" hidden></p>
         <p class="hint" style="margin:6px 0 0">發布後門市重新整理網頁就會看到。同一張發貨單重複發布時，系統會先問要不要覆蓋。</p>
@@ -850,7 +855,7 @@ $('printBtn').onclick=async()=>{
     if(!confirm(msg))return;
   }
   const rows=QUEUE.map(it=>({store:it.store||MYSTORE||'總部',barcode:barcodeOf(it),label_name:it.label_name,
-    docno:it.docno||'',qty:it.qty,src:EXTRA.includes(it)?'補印':'到貨'}));
+    docno:it.docno||'',qty:it.qty,src:EXTRA.includes(it)?'補印':(ROLE==='hq'?'總部印':'到貨')}));
   const who=await askWho(rows); if(!who)return;
   let html='';
   for(const it of QUEUE){for(let i=0;i<it.qty;i++)html+=labelHTML(it,'plabel',it.store,it.docno);}
@@ -1069,6 +1074,16 @@ async function doPublish(storeName,silent){
   }
   return total;
 }
+/* 總部直接列印：把目前店點的商品放進列印佇列，走跟門市一樣的列印流程（選人員＋密碼、記錄、重複警示） */
+$('hqPrintBtn').onclick=async()=>{
+  const cur=curItems();
+  if(!cur.length){toast('這間店沒有商品');return;}
+  const n=overCount(cur); if(n){toast('有 '+n+' 筆名稱超過 36 字，請先修正再列印');return;}
+  if(!Object.keys(PCOUNT).length)await loadPrintCounts('');
+  ARRSEL=cur.map(it=>Object.assign({},it)); EXTRA=[]; rebuildQueue();
+  await $('printBtn').onclick();
+  ARRSEL=[]; rebuildQueue();
+};
 let PUBLISHING=false;
 function lockPublish(on){PUBLISHING=on;$('publishBtn').disabled=on||overCount(curItems())>0;$('publishAll').disabled=on||overCount(ALL)>0;
   $('publishBtn').textContent=on?'發布中…':'發布到此店點';}
@@ -1273,7 +1288,7 @@ async function renderArrivals(){
    +'<div class="btnrow" style="margin:0 0 12px"><button class="stbtn" id="selAll">☑ 全部打勾</button>'
    +'<button class="stbtn" id="selNone">☐ 全部取消</button>'
    +(days.length>1?'<button class="stbtn" id="olderBtn">📅 看以前的到貨（還有 '+(days.length-1)+' 天）</button>':'')+'</div>'
-   +d.items.map((it,i)=>itemRow(it,i,true,it.qty)).join('');
+   +'<div class="itemgrid">'+d.items.map((it,i)=>itemRow(it,i,true,it.qty)).join('')+'</div>';
   bindDayList(d.items);refreshBadges();
   const ob=$('olderBtn');if(ob)ob.onclick=()=>showStorePane('old');
 }
@@ -1303,7 +1318,7 @@ function openDay(d,days){
   $('arrivals').innerHTML='<div class="btnrow" style="margin-top:0"><button class="stbtn" id="backBtn">← 回日期列表</button></div>'
    +dayHeader(d)+'<p class="rpWhen">這是以前的貨，預設都沒打勾。<b>要印哪個就勾哪個。</b></p>'
    +'<div class="btnrow" style="margin:0 0 12px"><button class="stbtn" id="selAll">☑ 全部打勾</button><button class="stbtn" id="selNone">☐ 全部取消</button></div>'
-   +d.items.map((it,i)=>itemRow(it,i,false,1)).join('');
+   +'<div class="itemgrid">'+d.items.map((it,i)=>itemRow(it,i,false,1)).join('')+'</div>';
   $('backBtn').onclick=()=>renderOlder(days);
   bindDayList(d.items);refreshBadges();
 }
