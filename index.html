@@ -434,11 +434,11 @@ function splitAtLimit(s){let n=0,i=0;
 
 /* ══════════ 縮名引擎（廠商識別碼受保護） ══════════ */
 const VENDOR=/\((台|廣|普)\)/g;
-const DEF_BRANDS='Galaxy, Spin Air, Spin, 原廠';
+const DEF_BRANDS='Galaxy, 原廠';
 const DEF_SUBS=[
  '# 廠商識別碼 (台)(廣)(普) 由系統保護，不受以下規則影響',
  '# ── 配件品牌縮碼 ──',
- 'Mobi Mate → MM','TORRAS → TRS','PureGear → PG','Solide → SLD','犀牛盾 → RS','太樂芬 → TLF',
+ 'Samsung → Sam','SAMSUNG → Sam','Mobi Mate → MM','TORRAS → TRS','PureGear → PG','Solide → SLD','犀牛盾 → RS','太樂芬 → TLF',
  '# ── 機型 ──',
  'APPLE iPhone → iPhone','Google Pixel → Pixel','Pro Max → PM','17 Pro /17 Pro Max → 17Pro/PM',
  '# ── 品項 ──',
@@ -453,7 +453,8 @@ const DEF_SUBS=[
 ].join('\n');
 
 let RULES={brands:DEF_BRANDS,subs:DEF_SUBS};
-function getBrands(){return RULES.brands.split(',').map(s=>s.trim()).filter(Boolean);}
+/* Spin、Spin Air 是 TORRAS 兩個不同系列，不能刪（就算雲端舊規則還寫著也跳過） */
+function getBrands(){return RULES.brands.split(',').map(s=>s.trim()).filter(b=>b&&!/^Spin(\s*Air)?$/i.test(b));}
 function getSubs(){
   const out=[];
   for(const l of RULES.subs.split(/\r?\n/)){
@@ -506,16 +507,18 @@ function watchName(name){
   const bandTxt=awColor(band)+btype+(bsize?'【'+bsize+'】':'');
   const core=series+' '+net+mm[1]+'｜'+caseColor+mat+'｜'+bandTxt;
   const tries=['AW '+core+vend, core+vend];
-  if(vend)tries.push(core+vend.replace(/[()]/g,''));
   for(const t of tries) if(width(t)<=LIMIT) return t;
   return tries[tries.length-1];
 }
-/* iPhone 機型縮寫：iPhone 18 Pro/17 Pro → iP18Pro/17Pro；同代重複的數字省略（18Pro/18ProMax → 18Pro/ProMax） */
+/* iPhone 機型縮寫：iPhone 18 Pro/17 Pro → i18P/17P；同代重複的數字省略（18P/18Pm → 18P/Pm） */
 function iphoneModels(s){
+  s=s.replace(/(?:APPLE\s+)?iPhone\s*Air(?![A-Za-z])/gi,'iAir');   /* iPhone Air → iAir */
   if(!/iPhone\s*\d/i.test(s))return s;
-  s=s.replace(/(?:APPLE\s+)?iPhone\s*(?=\d)/gi,'iP');
-  s=s.replace(/(\d{2})\s*(Pro\s*Max|Pro|Plus|Air|mini|e)(?![A-Za-z])/g,(m,n,t)=>n+t.replace(/\s+/g,''));
-  s=s.replace(/(iP\d{2}[A-Za-z]*)((?:\s*\/\s*\d{2}[A-Za-z]*)+)/g,(m,a,rest)=>{
+  /* 2026/10/12 定案：iPhone→i、Pro Max→Pm、Pro→P（例：iPhone 18 Pro Max/17 Pro → i18Pm/17P） */
+  s=s.replace(/(?:APPLE\s+)?iPhone\s*(?=\d)/gi,'i');
+  s=s.replace(/(\d{2})\s*(Pro\s*Max|Pro|Plus|Air|mini|e)(?![A-Za-z])/g,(m,n,t)=>{
+    t=t.replace(/\s+/g,''); t=t==='ProMax'?'Pm':(t==='Pro'?'P':t); return n+t;});
+  s=s.replace(/((?<![A-Za-z])i\d{2}[A-Za-z]*)((?:\s*\/\s*\d{2}[A-Za-z]*)+)/g,(m,a,rest)=>{
     let prev=a.match(/\d{2}/)[0], out=a;
     for(const part of rest.split('/').slice(1)){
       const q=part.trim(), n=q.match(/^\d{2}/)[0], t=q.slice(2);
@@ -528,6 +531,9 @@ function iphoneModels(s){
 function shorten(name){
   const aw=watchName(name); if(aw)return aw;
   let s=iphoneModels(String(name||''));
+  s=s.replace(/\bSamsung\b/gi,'Sam');   /* Samsung → Sam（寫在程式裡，雲端舊規則也會生效） */
+  /* TORRAS Spin 系列本身就是旋轉支架殼：留系列名、刪「旋轉支架」 */
+  s=s.replace(/\bSpin(\s*Air)?\s*旋轉支架\s*/g,(m,a)=>'Spin'+(a?' Air':'')+' ');
   /* 1. 抽出並保護廠商識別碼 */
   const vend=[]; s=s.replace(VENDOR,m=>{vend.push(m);return '\u0001';});
   s=s.replace(/^\s*上線條碼\s*/,'');
@@ -979,16 +985,14 @@ function renderTabs(){
 function curItems(){return ALL.filter(r=>(r.store||'（未標示）')===CUR);}
 
 function vendorOf(name){const m=String(name).match(/\((台|廣|普)\)/g);return m?m[m.length-1]:'';}
-/* 超過 36 字時，結尾的 (台)(廣)(普) 拿掉括號、緊貼前字：…【SM】(台) → …【SM】台 */
-function fitVendor(s){
-  if(width(s)<=LIMIT)return s;
-  return s.replace(/\s*\((台|廣|普)\)\s*$/,'$1');
-}
+/* 廠商碼一律保留括號 (台)(廣)(普)，超過 36 字就交給人工修改（2026/10/12 定案） */
+function fitVendor(s){return s;}
 function guardVendor(orig,edited){
   const v=vendorOf(orig); if(!v)return edited;
   if(edited.includes(v))return fitVendor(edited);
-  const bare=v.replace(/[()]/g,''); if(new RegExp(bare+'$').test(edited))return edited; /* 結尾「台」也算保留 */
-  return fitVendor(edited.replace(/\s+$/,'')+v);
+  const bare=v.replace(/[()]/g,'');
+  /* 結尾只剩「台」沒有括號的，補回括號 */
+  return edited.replace(new RegExp('(?:\\s+|(?<=[】\\])A-Za-z0-9]))'+bare+'\\s*$'),'').replace(/\s+$/,'')+v;
 }
 function overCount(list){return list.filter(it=>width(it.label_name)>LIMIT).length;}
 function updatePublishState(){
@@ -1026,9 +1030,7 @@ function renderPreview(){
   $('preview').querySelectorAll('.lab').forEach(el=>el.addEventListener('input',e=>{
     const i=+e.target.dataset.i,pos=e.target.selectionStart;
     const it=curItems()[i];
-    const fixed=guardVendor(it.original_name,e.target.value);
-    if(fixed!==e.target.value)toast('廠商識別碼不能移除，已自動補回');
-    it.label_name=fixed; renderPreview();
+    it.label_name=e.target.value; renderPreview();   /* 手動修改完全照打的字，不自動補廠商碼 */
     const n=document.querySelector('.lab[data-i="'+i+'"]');
     if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(x){}}
   }));
