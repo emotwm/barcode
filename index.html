@@ -709,7 +709,7 @@ const DB=CLOUD?CloudDB:LocalDB;
 /* 每筆商品的正式欄位 */
 function cleanItem(it){
   return {product_code:it.product_code||'',barcode:it.barcode||'',imei:it.imei||'',serial:it.serial||'',
-    original_name:it.original_name||'',label_name:it.label_name||'',qty:it.qty||1,unit:it.unit||''};
+    original_name:it.original_name||'',label_name:it.label_name||'',qty:it.qty||1,unit:it.unit||'',cost_code:it.cost_code||''};
 }
 /* 條碼列印用哪個值：唯一序號優先 */
 function barcodeOf(it){return it.barcode||it.imei||it.serial||it.product_code||'';}
@@ -798,10 +798,25 @@ function parseReport(text){
     if(!a||!code||!/^\d+/.test(qtyCell))continue;
     const qm=qtyCell.match(/^(\d+)\s*(.*)$/);
     const k=classify(code,a,qm?qm[2]:'');
-    rows.push(Object.assign({store,docno,original_name:a,label_name:guardVendor(a,shorten(a)),
+    const cost=parseInt(String(c[3]||'').replace(/[,\s]/g,''),10);
+    rows.push(Object.assign({store,docno,original_name:a,label_name:guardVendor(a,shorten(a)),cost_code:costCode(cost,code),
       qty:Math.max(1,parseInt(qm?qm[1]:'1',10)||1),unit:qm?qm[2]:''},k));
   }
   return rows;
+}
+
+/* ══════════ 條碼成本編碼（照大禾「後臺>設定>條碼成本編碼」類型 A） ══════════
+   成本 +0 → 每個數字換字：0→1 1→2 2→3 3→4 4→5 5→6 6→7 7→8 8→9 9→A
+   前字：不輸出；後字：3 個亂數；最前面加類型字母 A。例：成本 245 → A356 + 116
+   亂數用條碼算出來，同一個商品每次印都一樣（跟大禾一樣，重印不會變）。
+   只存編碼、不存成本數字，門市看不到真正的成本。 */
+const COST_MAP='123456789A';
+function costCode(cost,seed){
+  if(!(cost>0))return '';
+  const body=String(Math.round(cost)).split('').map(d=>COST_MAP[+d]).join('');
+  let h=0;for(const ch of String(seed||cost))h=(h*31+ch.charCodeAt(0))>>>0;
+  const tail=String(h%1000).padStart(3,'0');
+  return 'A'+body+tail;
 }
 
 /* ══════════ 共用 ══════════ */
@@ -818,7 +833,8 @@ function labelHTML(it,cls,storeName,docno){
   const bc=barcodeOf(it);
   return '<div class="'+cls+'">'
    +'<div class="l1">'+esc(it.label_name)+'</div>'
-   +'<div class="l2"><span>'+esc(left)+'</span><span>'+esc(bc)+'</span></div>'
+   /* 第二行右邊：有成本編碼就印編碼（條碼號碼下面一行已經有，不重複印） */
+   +'<div class="l2"><span>'+esc(left)+'</span><span>'+esc(it.cost_code||bc)+'</span></div>'
    +'<div class="l3">'+barcodeSVG(bc)+'</div>'
    +'<div class="l4"><span>'+esc(bc)+'</span><span>'+esc(right)+'</span></div></div>';
 }
