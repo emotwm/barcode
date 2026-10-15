@@ -939,7 +939,9 @@ $('printBtn').onclick=async()=>{
   if(!QUEUE.length){toast('還沒有選要印的商品');return;}
   const blank=QUEUE.filter(it=>!barcodeOf(it));
   if(blank.length){toast('有 '+blank.length+' 筆商品沒有條碼資料，無法列印，請回報總部');return;}
-  const dup=QUEUE.filter(it=>pcOf(it));
+  /* 總部列印：不用選人員、不用密碼、不記錄、不跳重複警示 */
+  const HQ=ROLE==='hq';
+  const dup=HQ?[]:QUEUE.filter(it=>pcOf(it));
   if(dup.length){
     const uniq=dup.filter(isUnique);
     const msg=(uniq.length?'⚠ 有 '+uniq.length+' 台手機／序號商品已經印過標籤！\n同一台機器不應該有兩張標籤，請確認是補貼還是重複。\n\n':'')
@@ -951,11 +953,12 @@ $('printBtn').onclick=async()=>{
   }
   const rows=QUEUE.map(it=>({store:it.store||MYSTORE||'總部',barcode:barcodeOf(it),label_name:it.label_name,
     docno:it.docno||'',qty:it.qty,src:EXTRA.includes(it)?'補印':(ROLE==='hq'?'總部印':'到貨')}));
-  const who=await askWho(rows); if(!who)return;
+  if(!HQ){const who=await askWho(rows); if(!who)return;}
   let html='';
   for(const it of QUEUE){for(let i=0;i<it.qty;i++)html+=labelHTML(it,'plabel',it.store,it.docno);}
   $('sheet').innerHTML=html;
   try{window.print();}catch(e){toast('此環境無法列印，請在電腦 Chrome 開啟');return;}
+  if(HQ)return;
   for(const r of rows){const k=pcKey(r.store,r.barcode);const c=PCOUNT[k]||(PCOUNT[k]={n:0,last:''});c.n++;c.last=new Date().toISOString();}
   refreshBadges();
 };
@@ -1355,11 +1358,39 @@ async function renderHistory(){
   let b=[];
   try{b=await DB.batches();}catch(e){$('history').innerHTML=errBox('暫時無法讀取發布紀錄','請確認網路連線，或稍後再試。',e,'renderHistory');return;}
   if(!b.length){$('history').innerHTML='<div class="empty">還沒有發布紀錄。</div>';return;}
-  $('history').innerHTML='<table><thead><tr><th>時間</th><th>店點</th><th>單號</th><th>筆數</th><th style="width:60px"></th></tr></thead><tbody>'
-   +b.slice(0,30).map(x=>'<tr><td class="c">'+new Date(x.published_at).toLocaleString('zh-TW')+'</td>'
+  const rows=b.slice(0,30);
+  $('history').innerHTML='<table><thead><tr><th>時間</th><th>店點</th><th>單號</th><th>筆數</th><th style="width:170px"></th></tr></thead><tbody>'
+   +rows.map((x,k)=>'<tr><td class="c">'+new Date(x.published_at).toLocaleString('zh-TW')+'</td>'
      +'<td>'+esc(x.store)+'</td><td class="c">'+esc(x.docno)+'</td><td class="c">'+x.items.length+'</td>'
-     +'<td><button class="mini" data-rmb="'+esc(x.id)+'" data-nm="'+esc(x.store+' '+x.docno)+'">刪除</button></td></tr>').join('')
+     +'<td style="white-space:nowrap"><button class="mini primary" data-hpr="'+k+'">🖨 列印</button> '
+     +'<button class="mini" data-rmb="'+esc(x.id)+'" data-nm="'+esc(x.store+' '+x.docno)+'">刪除</button></td></tr>'
+     +'<tr class="hdet" data-k="'+k+'" hidden><td colspan="5" style="background:#FFF7F0"></td></tr>').join('')
    +'</tbody></table>';
+  /* 總部補印以前發布的單：展開→勾選→列印（總部列印不用密碼、不記錄） */
+  $('history').querySelectorAll('[data-hpr]').forEach(btn=>btn.onclick=()=>{
+    const k=+btn.dataset.hpr,x=rows[k],tr=$('history').querySelector('.hdet[data-k="'+k+'"]'),td=tr.firstElementChild;
+    if(!tr.hidden){tr.hidden=true;return;}
+    $('history').querySelectorAll('.hdet').forEach(t=>t.hidden=true);
+    const items=x.items.map(it=>Object.assign({},it,{store:x.store,docno:x.docno,_sel:true}));
+    const tot=()=>items.filter(i=>i._sel).reduce((a,i)=>a+(i.qty||1),0);
+    td.innerHTML='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px"><b>'+esc(x.store)+'　'+esc(x.docno)+'</b>'
+      +'<label style="display:inline-flex;gap:4px;align-items:center"><input type="checkbox" class="hall" checked> 全選</label>'
+      +'<button class="mini primary hgo">🖨 列印勾選的（<span class="hn">'+tot()+'</span> 張）</button></div>'
+      +'<table><tbody>'+items.map((it,i)=>'<tr><td style="width:34px;text-align:center"><input type="checkbox" class="hsel" data-i="'+i+'" checked></td>'
+        +'<td>'+esc(it.label_name)+'</td><td class="c" style="width:170px">'+esc(barcodeOf(it))+'</td>'
+        +'<td style="width:120px;white-space:nowrap">張數 <input type="text" class="hq" data-i="'+i+'" value="'+(it.qty||1)+'" style="width:44px;padding:2px 4px"></td></tr>').join('')+'</tbody></table>';
+    tr.hidden=false;
+    const upd=()=>{td.querySelector('.hn').textContent=tot();};
+    td.querySelectorAll('.hsel').forEach(c=>c.onchange=()=>{items[+c.dataset.i]._sel=c.checked;td.querySelector('.hall').checked=items.every(i=>i._sel);upd();});
+    td.querySelectorAll('.hq').forEach(q=>q.oninput=()=>{items[+q.dataset.i].qty=Math.max(1,parseInt(q.value,10)||1);upd();});
+    td.querySelector('.hall').onchange=e=>{items.forEach(i=>i._sel=e.target.checked);td.querySelectorAll('.hsel').forEach(c=>c.checked=e.target.checked);upd();};
+    td.querySelector('.hgo').onclick=async()=>{
+      const sel=items.filter(i=>i._sel);if(!sel.length){toast('請先勾選要列印的商品');return;}
+      ARRSEL=sel.map(i=>Object.assign({},i));EXTRA=[];rebuildQueue();
+      await $('printBtn').onclick();
+      ARRSEL=[];rebuildQueue();
+    };
+  });
   $('history').querySelectorAll('[data-rmb]').forEach(btn=>btn.onclick=async()=>{
     if(!confirm('刪除這批發布？\n'+btn.dataset.nm+'\n門市端會同步看不到，無法復原。'))return;
     try{await DB.remove(btn.dataset.rmb);renderHistory();toast('已刪除');}
