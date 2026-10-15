@@ -260,6 +260,13 @@ td{font-size:14.5px}
 .stRow select{padding:3px 4px;font-size:13.5px;width:auto}
 .stRow .mini{padding:4px 9px;font-size:13px}
 @media (max-width:520px){.stGrid{grid-template-columns:1fr}.stRow{grid-template-columns:1fr auto;}.stRow select{grid-column:1}}
+
+.docbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px;padding:10px 12px;background:#FFF7F0;border:1px solid #F2C9AE;border-radius:8px}
+.docbar .dlab{font-weight:700;margin-right:4px}
+.dchip{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1.25;padding:6px 12px;border:1px solid var(--rule);background:#fff;border-radius:8px;font-size:14px}
+.dchip small{font-size:11.5px;color:var(--ink2)}
+.dchip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+.dchip.on small{color:#fff;opacity:.9}
 </style>
 </head>
 <body>
@@ -1061,10 +1068,21 @@ function renderTabs(){
     const c=ALL.filter(r=>(r.store||'（未標示）')===n).length;
     return '<button class="tab" data-s="'+esc(n)+'" aria-pressed="'+(n===CUR)+'">'+esc(n)+'<small>'+c+'</small></button>';
   }).join('');
-  $('storeTabs').querySelectorAll('.tab').forEach(b=>b.onclick=()=>{CUR=b.dataset.s;renderTabs();renderPreview();setStep(3);});
+  $('storeTabs').querySelectorAll('.tab').forEach(b=>b.onclick=()=>{CUR=b.dataset.s;CURDOC='';renderTabs();renderPreview();setStep(3);});
 }
 
 function curItems(){return ALL.filter(r=>(r.store||'（未標示）')===CUR);}
+/* 總部也可以只看某一張發貨單（發布仍以整個店點為單位） */
+let CURDOC='';
+function viewItems(){const l=curItems();return CURDOC?l.filter(r=>r.docno===CURDOC):l;}
+function hqDocChips(){
+  const l=curItems(),docs=[...new Set(l.map(r=>r.docno||''))].filter(Boolean).sort();
+  if(docs.length<2)return '';
+  return '<div class="docbar"><span class="dlab">選發貨單號：</span>'
+   +'<button class="dchip'+(CURDOC?'':' on')+'" data-doc=""><b>全部</b><small>'+l.length+' 項</small></button>'
+   +docs.map(d=>'<button class="dchip'+(CURDOC===d?' on':'')+'" data-doc="'+esc(d)+'"><b>'+esc(d)+'</b><small>'+l.filter(r=>r.docno===d).length+' 項</small></button>').join('')
+   +'<span class="hint" style="margin:0">選單號後，那張單的商品會自動打勾，按「列印勾選的」就只印那張。</span></div>';
+}
 
 function vendorOf(name){const m=String(name).match(/\((台|廣|普)\)/g);return m?m[m.length-1]:'';}
 /* 廠商碼一律保留括號 (台)(廣)(普)，超過 36 字就交給人工修改（2026/10/12 定案） */
@@ -1087,9 +1105,10 @@ function updatePublishState(){
   renderSummary();updateHqPrintBtn();
 }
 function renderPreview(){
-  const list=curItems();
+  if(CURDOC&&!viewItems().some(r=>r.docno===CURDOC))CURDOC='';
+  const list=viewItems();
   if(!list.length){$('preview').innerHTML='<div class="empty">此店點沒有明細。</div>';updatePublishState();return;}
-  $('preview').innerHTML='<div class="scrollx"><table style="min-width:820px"><thead><tr>'
+  $('preview').innerHTML=hqDocChips()+'<div class="scrollx"><table style="min-width:820px"><thead><tr>'
    +'<th style="width:38px;text-align:center" title="勾選要由總部列印的商品"><input type="checkbox" id="pselAll"'+(list.length&&list.every(x=>x._sel)?' checked':'')+'></th>'
    +'<th style="width:150px">商品編號／條碼</th><th style="width:34%">大禾原始品名</th><th>條碼顯示名稱</th>'
    +'<th style="width:62px">寬度</th><th style="width:62px">數量</th><th style="width:44px"></th></tr></thead><tbody>'
@@ -1111,19 +1130,22 @@ function renderPreview(){
 
   $('preview').querySelectorAll('.lab').forEach(el=>el.addEventListener('input',e=>{
     const i=+e.target.dataset.i,pos=e.target.selectionStart;
-    const it=curItems()[i];
+    const it=viewItems()[i];
     it.label_name=e.target.value; renderPreview();   /* 手動修改完全照打的字，不自動補廠商碼 */
     const n=document.querySelector('.lab[data-i="'+i+'"]');
     if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(x){}}
   }));
-  $('preview').querySelectorAll('.psel').forEach(el=>el.onchange=()=>{curItems()[+el.dataset.i]._sel=el.checked;
-    const all=$('pselAll');if(all)all.checked=curItems().every(x=>x._sel);updateHqPrintBtn();});
-  const pa=$('pselAll');if(pa)pa.onchange=()=>{curItems().forEach(x=>x._sel=pa.checked);renderPreview();};
+  $('preview').querySelectorAll('.psel').forEach(el=>el.onchange=()=>{viewItems()[+el.dataset.i]._sel=el.checked;
+    const all=$('pselAll');if(all)all.checked=viewItems().every(x=>x._sel);updateHqPrintBtn();});
+  $('preview').querySelectorAll('.dchip').forEach(b=>b.onclick=()=>{CURDOC=b.dataset.doc;
+    if(CURDOC)curItems().forEach(x=>x._sel=(x.docno===CURDOC));
+    renderPreview();updateHqPrintBtn();});
+  const pa=$('pselAll');if(pa)pa.onchange=()=>{viewItems().forEach(x=>x._sel=pa.checked);renderPreview();};
   $('preview').querySelectorAll('[data-q]').forEach(el=>el.addEventListener('input',e=>{
-    curItems()[+e.target.dataset.q].qty=Math.max(1,parseInt(e.target.value,10)||1);updateHqPrintBtn();
+    viewItems()[+e.target.dataset.q].qty=Math.max(1,parseInt(e.target.value,10)||1);updateHqPrintBtn();
   }));
   $('preview').querySelectorAll('[data-del]').forEach(el=>el.onclick=()=>{
-    const it=curItems()[+el.dataset.del];
+    const it=viewItems()[+el.dataset.del];
     if(!confirm('移除這筆？\n'+it.label_name+'\n（只影響這次發布，不影響大禾資料）'))return;
     const k=ALL.indexOf(it); if(k>=0)ALL.splice(k,1);
     renderTabs(); renderPreview(); toast('已移除');
@@ -1165,11 +1187,11 @@ async function doPublish(storeName,silent){
 }
 /* 總部直接列印：把目前店點的商品放進列印佇列，走跟門市一樣的列印流程（選人員＋密碼、記錄、重複警示） */
 function updateHqPrintBtn(){
-  const sel=curItems().filter(x=>x._sel);
+  const sel=viewItems().filter(x=>x._sel);
   $('hqPrintBtn').textContent=sel.length?('🖨 列印勾選的（'+labelTotal(sel)+' 張）'):'🖨 列印勾選的';
 }
 $('hqPrintBtn').onclick=async()=>{
-  const cur=curItems().filter(x=>x._sel);
+  const cur=viewItems().filter(x=>x._sel);
   if(!cur.length){toast('請先在表格最左邊勾選要列印的商品');return;}
   const n=overCount(cur); if(n){toast('有 '+n+' 筆名稱超過 36 字，請先修正再列印');return;}
   if(!Object.keys(PCOUNT).length)await loadPrintCounts('');
@@ -1379,6 +1401,26 @@ function itemRow(it,i,checked,qty){
    +'<span class="qwrap">張數 <input type="text" class="qbox" data-i="'+i+'" value="'+qty+'" onclick="event.stopPropagation()"></span>'
    +'</label>';
 }
+/* 同一天有好幾張發貨單 → 上方出現「第幾次發貨」按鈕，可以只印某一次 */
+function docChips(d,cur){
+  if(d.batches.length<2)return '';
+  const bs=d.batches.slice().sort((a,b)=>String(a.docno).localeCompare(String(b.docno)));
+  return '<div class="docbar"><span class="dlab">選發貨單號：</span>'
+   +'<button class="dchip'+(cur?'':' on')+'" data-doc=""><b>全部</b><small>'+d.items.length+' 項</small></button>'
+   +bs.map(b=>'<button class="dchip'+(cur===b.docno?' on':'')+'" data-doc="'+esc(b.docno)+'"><b>'+esc(b.docno)+'</b><small>'+b.items.length+' 項</small></button>').join('')
+   +'</div>';
+}
+function showDayItems(d,checked,cur,headHTML,onBack){
+  const list=cur?d.items.filter(it=>it.docno===cur):d.items;
+  $('arrivals').innerHTML=headHTML+docChips(d,cur)
+   +'<div class="btnrow" style="margin:0 0 12px"><button class="stbtn" id="selAll">☑ 全部打勾</button><button class="stbtn" id="selNone">☐ 全部取消</button>'
+   +(headHTML.indexOf('olderBtn')<0&&STDAYS.length>1&&checked?'<button class="stbtn" id="olderBtn">📅 看以前的到貨（還有 '+(STDAYS.length-1)+' 天）</button>':'')+'</div>'
+   +'<div class="itemgrid">'+list.map((it,i)=>itemRow(it,i,checked||!!cur,checked?it.qty:(cur?it.qty:1))).join('')+'</div>';
+  $('arrivals').querySelectorAll('.dchip').forEach(b=>b.onclick=()=>showDayItems(d,checked,b.dataset.doc,headHTML,onBack));
+  bindDayList(list);refreshBadges();
+  const ob=$('olderBtn');if(ob)ob.onclick=()=>showStorePane('old');
+  const bb=$('backBtn');if(bb&&onBack)bb.onclick=onBack;
+}
 function bindDayList(list){
   const sync=()=>{
     ARRSEL=[];
@@ -1406,14 +1448,7 @@ async function renderArrivals(){
     $('arrivals').innerHTML='<div class="empty">目前沒有到貨資料。<br>總部發布後重新整理就會出現。</div>';return;
   }
   const days=groupByDate(batches);STDAYS=days;
-  const d=days[0];
-  $('arrivals').innerHTML=dayHeader(d)
-   +'<div class="btnrow" style="margin:0 0 12px"><button class="stbtn" id="selAll">☑ 全部打勾</button>'
-   +'<button class="stbtn" id="selNone">☐ 全部取消</button>'
-   +(days.length>1?'<button class="stbtn" id="olderBtn">📅 看以前的到貨（還有 '+(days.length-1)+' 天）</button>':'')+'</div>'
-   +'<div class="itemgrid">'+d.items.map((it,i)=>itemRow(it,i,true,it.qty)).join('')+'</div>';
-  bindDayList(d.items);refreshBadges();
-  const ob=$('olderBtn');if(ob)ob.onclick=()=>showStorePane('old');
+  showDayItems(days[0],true,'',dayHeader(days[0]));
 }
 let STDAYS=[];
 function showStorePane(name){
@@ -1438,12 +1473,9 @@ async function renderOlder(days){
 }
 function openDay(d,days){
   ARRSEL=[];rebuildQueue();
-  $('arrivals').innerHTML='<div class="btnrow" style="margin-top:0"><button class="stbtn" id="backBtn">← 回日期列表</button></div>'
-   +dayHeader(d)+'<p class="rpWhen">這是以前的貨，預設都沒打勾。<b>要印哪個就勾哪個。</b></p>'
-   +'<div class="btnrow" style="margin:0 0 12px"><button class="stbtn" id="selAll">☑ 全部打勾</button><button class="stbtn" id="selNone">☐ 全部取消</button></div>'
-   +'<div class="itemgrid">'+d.items.map((it,i)=>itemRow(it,i,false,1)).join('')+'</div>';
-  $('backBtn').onclick=()=>renderOlder(days);
-  bindDayList(d.items);refreshBadges();
+  const head='<div class="btnrow" style="margin-top:0"><button class="stbtn" id="backBtn">← 回日期列表</button></div>'
+   +dayHeader(d)+'<p class="rpWhen">這是以前的貨，預設都沒打勾。<b>要印哪個就勾哪個</b>，或在上面選「第幾次」只印那一次。</p>';
+  showDayItems(d,false,'',head,()=>renderOlder(days));
 }
 
 /* ── 搜尋補印：歷史到貨優先；手機不從商品清單產生 ── */
