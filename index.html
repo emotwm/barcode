@@ -249,7 +249,8 @@ td{font-size:14.5px}
 .stCard{background:var(--paper);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
 .stHead{background:var(--ink);color:#fff;font-family:var(--serif);font-weight:900;font-size:16px;padding:8px 14px;display:flex;align-items:baseline;gap:8px}
 .stHead small{font-family:var(--sans);font-weight:400;font-size:12.5px;opacity:.75}
-.stRow{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:6px;padding:7px 12px;border-top:1px solid var(--liner)}
+.stDutyBar{font-size:13px;padding:6px 14px;background:#FFF7F0;border-bottom:1px solid var(--liner)}
+.stRow{display:grid;grid-template-columns:1fr auto auto auto auto;align-items:center;gap:6px;padding:7px 12px;border-top:1px solid var(--liner)}
 .stRow:first-of-type{border-top:0}
 .stRow.off{opacity:.5}
 .stName{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;min-width:0}
@@ -267,6 +268,13 @@ td{font-size:14.5px}
 .dchip small{font-size:11.5px;color:var(--ink2)}
 .dchip.on{background:var(--brand);border-color:var(--brand);color:#fff}
 .dchip.on small{color:#fff;opacity:.9}
+
+.homeBox{max-width:760px;margin:40px auto}
+.homeGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.homeBtn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:26px 10px;background:#fff;border:1px solid var(--rule);border-radius:10px;cursor:pointer}
+.homeBtn b{font-family:var(--serif);font-size:24px;font-weight:900}
+.homeBtn small{font-size:12.5px;color:var(--ink2)}
+.homeBtn:hover{border-color:var(--brand);box-shadow:0 0 0 3px rgba(232,84,30,.15)}
 </style>
 </head>
 <body>
@@ -285,14 +293,25 @@ td{font-size:14.5px}
 
 <main>
 
-<!-- ══ 總部登入 ══ -->
+<!-- ══ 首頁：選店點 ══ -->
+<section id="home" hidden>
+  <div class="homeBox">
+    <h2 class="hqTitle" style="text-align:center">請選擇店點</h2>
+    <p class="hint" style="text-align:center;margin:0 0 18px">點你現在所在的店，就能印當天到貨的條碼。</p>
+    <div class="homeGrid" id="homeGrid"></div>
+    <p class="hint" style="text-align:center;margin-top:22px"><a href="#" id="hqLink">總部登入 →</a></p>
+  </div>
+</section>
+
+<!-- ══ 登入 ══ -->
 <section id="gate" hidden>
   <div class="gate">
     <p class="eyebrow" id="gateTitle">登入</p>
-    <label class="f"><span>帳號</span><input type="text" id="uid" autocomplete="username"></label>
+    <label class="f" id="uidRow"><span>帳號</span><input type="text" id="uid" autocomplete="username"></label>
     <label class="f"><span>密碼</span><input type="password" id="pw" autocomplete="current-password"></label>
     <div class="btnrow"><button class="primary" id="pwGo">登入</button></div>
     <p class="hint" id="gateHint"></p>
+    <p class="hint"><a href="#" id="gateBack">← 回選店點</a></p>
   </div>
 </section>
 
@@ -408,10 +427,10 @@ td{font-size:14.5px}
     <h2 class="storeTitle"><span id="storeName"></span><span class="sep">｜</span>條碼列印</h2>
     <nav class="hqnav" id="stnav">
       <button data-sp="arr" class="on">📦 到貨列印</button>
-      <button data-sp="search">🔍 補印搜尋<span class="navcnt" id="navExtra"></span></button>
-      <button data-sp="old">📅 以前的到貨</button>
+      <button data-sp="search">🔍 補印搜尋 🔒<span class="navcnt" id="navExtra"></span></button>
+      <button data-sp="old">📅 以前的到貨 🔒</button>
     </nav>
-    <p class="hint" style="margin:-8px 0 10px">勾選或加入要印的商品 → 按右下角紅色「🖨 列印標籤」→ 目的地選 <b>Godex DT2x</b> 按「列印」。三個分頁加入的商品會一起印。</p>
+    <p class="hint" style="margin:-8px 0 10px">當天到貨直接勾選 → 按右下角「🖨 列印標籤」→ 目的地選 <b>Godex DT2x</b> 按「列印」。<b>🔒 補印</b>（補印搜尋、以前的到貨）要店經理或庫存管理輸入密碼。</p>
 
     <div class="stpane card" data-sp="arr old">
       <div class="cardHead" id="arrHead">
@@ -444,9 +463,9 @@ td{font-size:14.5px}
 </footer>
 
 <div class="modal" id="whoModal" hidden><div class="box">
-  <h3>🖨 誰在列印？</h3>
-  <p class="hint" style="margin:0">選自己的名字、輸入個人密碼，這次列印會記在你名下。</p>
-  <label>列印人員<select id="whoName"></select></label>
+  <h3>🔒 補印需要主管確認</h3>
+  <p class="hint" style="margin:0">補印只有<b>店經理</b>或<b>庫存管理</b>可以。選名字、輸入個人密碼，這次補印會記在你名下。</p>
+  <label>店經理／庫存管理<select id="whoName"></select></label>
   <label>個人密碼（4 位數）<input type="password" id="whoPin" inputmode="numeric" maxlength="8" autocomplete="off"></label>
   <p class="err" id="whoErr"></p>
   <div class="btnrow"><button id="whoCancel">取消</button><button class="primary" id="whoOk">確認列印</button></div>
@@ -660,7 +679,9 @@ const LocalDB={
     for(const r of rows)all.unshift(Object.assign({printed_at:t},r));this.write('prints',all.slice(0,5000));},
   async prints(store){return this.read('prints',[]).filter(r=>!store||r.store===store);},
   async listStaff(store){return this.read('staff',[]).filter(x=>!store||x.store===store)
-    .map(x=>({id:x.id,store:x.store,name:x.name,active:x.active!==false,default_pin:x.pin==='0000'}));},
+    .map(x=>({id:x.id,store:x.store,name:x.name,active:x.active!==false,default_pin:x.pin==='0000',duty:x.duty||''}));},
+  async setDuty(id,duty){const all=this.read('staff',[]);const x=all.find(a=>a.id===id);if(x){x.duty=duty||'';this.write('staff',all);}},
+  async logPrintsArrival(rows){await this.logPrints(rows.map(r=>Object.assign({staff_name:''},r)));},
   async saveStaff(id,store,name,pin,active){const all=this.read('staff',[]);
     let x=id?all.find(a=>a.id===id):null;
     if(!x){x={id:Date.now(),store,name,pin:pin||'0000',active:true};all.push(x);}
@@ -668,6 +689,7 @@ const LocalDB={
     this.write('staff',all);},
   async logPrintsBy(staffId,pin,rows){const x=this.read('staff',[]).find(a=>a.id===staffId);
     if(!x||x.active===false||x.pin!==pin)throw new Error('密碼錯誤');
+    if(rows.some(r=>r.src==='補印')&&!x.duty)throw new Error('只有店經理或庫存管理可以補印');
     await this.logPrints(rows.map(r=>Object.assign({staff_name:x.name},r)));return x.name;},
   async saveRules(r){this.write('rules',r);},
   async loadRules(){return this.read('rules',null);},
@@ -712,9 +734,11 @@ const CloudDB={
   async saveStaff(id,store,name,pin,active){
     const {error}=await this.sb.rpc('admin_save_staff',{p_id:id||null,p_store:store||null,p_name:name||null,p_pin:pin||null,p_active:active==null?null:active});
     if(error)throw new Error(error.message);},
+  async setDuty(id,duty){const {error}=await this.sb.rpc('admin_set_duty',{p_id:id,p_duty:duty||null});if(error)throw new Error(error.message);},
+  async logPrintsArrival(rows){const {error}=await this.sb.rpc('log_prints_arrival',{p_rows:rows});if(error)throw new Error(error.message);},
   async logPrintsBy(staffId,pin,rows){
     const {data,error}=await this.sb.rpc('log_prints_by',{p_staff:staffId,p_pin:pin,p_rows:rows});
-    if(error)throw new Error(/pin|密碼/i.test(error.message)?'密碼錯誤':error.message);return data;}
+    if(error)throw new Error(/PIN 密碼錯誤|密碼錯誤/.test(error.message)?'密碼錯誤':error.message);return data;}
 };
 const DB=CLOUD?CloudDB:LocalDB;
 
@@ -853,6 +877,7 @@ function labelHTML(it,cls,storeName,docno){
 
 /* ══════════ 列印佇列 ══════════ */
 let QUEUE=[],ARRSEL=[],EXTRA=[];
+let ARRMODE='today';   /* today＝到貨列印；old＝以前的到貨（算補印） */
 /* 待印 = 到貨清單勾選的 + 搜尋補印加入的；兩者分開存，勾選變動不會洗掉補印 */
 function rebuildQueue(){QUEUE=ARRSEL.concat(EXTRA);renderFooter();renderExtras();}
 function queueAdd(it,qty){
@@ -887,15 +912,16 @@ $('clearSel').onclick=()=>{ARRSEL=[];EXTRA=[];rebuildQueue();
   document.querySelectorAll('.selbox').forEach(b=>b.checked=false);toast('已清空');};
 /* ══════════ 列印紀錄：每次按「列印標籤」都記一筆，重複列印會警示 ══════════ */
 /* ══════════ 列印人員：選名字＋個人密碼，驗證通過才印，紀錄記在個人名下 ══════════ */
+/* 補印（補印搜尋、以前的到貨）只有這間店的「店經理」或「庫存管理」可以，要輸入個人密碼 */
 function askWho(rows){
   return new Promise(async resolve=>{
     const store=MYSTORE||'總部';
     let list=[];
-    try{list=(await DB.listStaff(store)).filter(x=>x.active);}
+    try{list=(await DB.listStaff(store)).filter(x=>x.active&&x.duty);}
     catch(e){toast('讀不到人員名單：'+e.message);resolve(null);return;}
-    if(!list.length){toast('這間店還沒有建立人員，請總部到「人員管理」新增');resolve(null);return;}
+    if(!list.length){toast('這間店還沒指定店經理或庫存管理，請總部到「人員管理」設定');resolve(null);return;}
     let last='';try{last=localStorage.getItem('bc:who:'+store)||'';}catch(e){}
-    $('whoName').innerHTML='<option value="">— 請選擇 —</option>'+list.map(x=>'<option value="'+x.id+'"'+(String(x.id)===last?' selected':'')+'>'+esc(x.name)+'</option>').join('');
+    $('whoName').innerHTML='<option value="">— 請選擇 —</option>'+list.map(x=>'<option value="'+x.id+'"'+(String(x.id)===last?' selected':'')+'>'+esc(x.name)+'（'+esc(x.duty)+'）</option>').join('');
     $('whoPin').value='';$('whoErr').textContent='';$('whoModal').hidden=false;
     setTimeout(()=>($('whoName').value?$('whoPin'):$('whoName')).focus(),50);
     const close=v=>{$('whoModal').hidden=true;$('whoOk').onclick=$('whoCancel').onclick=$('whoPin').onkeydown=null;resolve(v);};
@@ -952,8 +978,12 @@ $('printBtn').onclick=async()=>{
     if(!confirm(msg))return;
   }
   const rows=QUEUE.map(it=>({store:it.store||MYSTORE||'總部',barcode:barcodeOf(it),label_name:it.label_name,
-    docno:it.docno||'',qty:it.qty,src:EXTRA.includes(it)?'補印':(ROLE==='hq'?'總部印':'到貨')}));
-  if(!HQ){const who=await askWho(rows); if(!who)return;}
+    docno:it.docno||'',qty:it.qty,src:ROLE==='hq'?'總部印':((EXTRA.includes(it)||it._re)?'補印':'到貨')}));
+  /* 當天到貨：直接印，不用選人；補印：要店經理／庫存管理密碼 */
+  if(!HQ){
+    if(rows.some(r=>r.src==='補印')){const who=await askWho(rows); if(!who)return;}
+    else{try{await DB.logPrintsArrival(rows);}catch(e){console.warn('arrival log',e);}}
+  }
   let html='';
   for(const it of QUEUE){for(let i=0;i<it.qty;i++)html+=labelHTML(it,'plabel',it.store,it.docno);}
   $('sheet').innerHTML=html;
@@ -975,43 +1005,68 @@ function loginEmail(id){
 }
 function keyOfStore(n){for(const k in STORE_KEYS)if(STORE_KEYS[k]===n)return k;return '';}
 
+/* 畫面：home＝選店點首頁、gate＝登入、app＝店點／總部畫面 */
+let VIEW='home',GATESTORE='';
+function accountOf(k){for(const a in ACCOUNTS)if(ACCOUNTS[a]===k)return a;return '';}
+function renderHome(){
+  $('homeGrid').innerHTML=Object.keys(STORE_KEYS).map(k=>'<button class="homeBtn" data-k="'+k+'"><b>'+esc(STORE_KEYS[k])+'</b>'
+    +'<small>#'+accountOf(k)+(AUTH.role==='store'&&AUTH.store===k?'・這台電腦':'')+'</small></button>').join('');
+  $('homeGrid').querySelectorAll('.homeBtn').forEach(b=>b.onclick=()=>goStore(b.dataset.k));
+}
+function goStore(k){
+  WANT=k;ARRSEL=[];EXTRA=[];rebuildQueue();HIST=[];
+  if(AUTH.role==='store'&&AUTH.store===k){VIEW='app';applyRole();return;}
+  GATESTORE=k;VIEW='gate';applyRole();
+}
+function goHome(){VIEW='home';GATESTORE='';WANT='';ARRSEL=[];EXTRA=[];rebuildQueue();
+  try{history.replaceState(null,'',location.pathname);}catch(e){}applyRole();}
+$('hqLink').onclick=e=>{e.preventDefault();GATESTORE='';VIEW='gate';applyRole();};
+$('gateBack').onclick=e=>{e.preventDefault();goHome();};
 function applyRole(){
   const admin=AUTH.isAdmin();
   const logged=!!AUTH.role;
-  $('logoutBtn').hidden=!logged;
-  $('pwBtn').hidden=!(logged&&AUTH.isAdmin()&&CLOUD);
-  if(!logged){
-    $('gate').hidden=false;$('hq').hidden=true;$('store').hidden=true;
-    $('roleBadge').textContent=WANT?(STORE_KEYS[WANT]||'門市'):'未登入';$('roleBadge').className='badge';
-    $('gateTitle').textContent=WANT?(STORE_KEYS[WANT]+'　登入'):'登入';
-    $('gateHint').textContent=CLOUD?'請輸入總部配發的帳號密碼，登入後這台電腦會記住。'
-      :'測試版：總部 admin / admin；門市帳號為店號（01、04、07、09、13），密碼 0000。';
-    return;
-  }
-  $('gate').hidden=true;
+  const sections=on=>{for(const id of ['home','gate','hq','store'])$(id).hidden=id!==on;};
+  $('pwBtn').hidden=!(logged&&admin&&CLOUD);
+  document.querySelector('footer').hidden=true;
   if(admin){
-    ROLE='hq';MYSTORE='';
+    ROLE='hq';MYSTORE='';$('logoutBtn').hidden=false;$('logoutBtn').lastChild.textContent='登出';
     $('roleBadge').textContent='總部';$('roleBadge').className='badge';
-    $('hq').hidden=false;$('store').hidden=true;document.querySelector('footer').hidden=true;initHQ();
-  }else{
+    sections('hq');initHQ();return;
+  }
+  if(VIEW==='app'&&AUTH.role==='store'){
     ROLE='store';
     const k=AUTH.store||'';
     MYSTORE=STORE_KEYS[k]||'';
     if(WANT&&WANT!==k){toast('這個帳號屬於 '+(STORE_KEYS[k]||'其他門市')+'，已自動切換');}
+    $('logoutBtn').hidden=false;$('logoutBtn').lastChild.textContent='換店點';
     $('roleBadge').textContent=MYSTORE||'門市';$('roleBadge').className='badge store';
-    $('hq').hidden=true;$('store').hidden=false;document.querySelector('footer').hidden=false;renderStorePage();
+    sections('store');document.querySelector('footer').hidden=false;renderStorePage();return;
   }
+  ROLE='';MYSTORE='';$('logoutBtn').hidden=true;
+  if(VIEW==='gate'){
+    sections('gate');
+    $('roleBadge').textContent=GATESTORE?STORE_KEYS[GATESTORE]:'總部';$('roleBadge').className='badge';
+    $('gateTitle').textContent=GATESTORE?(STORE_KEYS[GATESTORE]+'　第一次使用請登入'):'總部登入';
+    $('uid').value=GATESTORE?accountOf(GATESTORE):'';$('uidRow').hidden=!!GATESTORE;
+    $('gateHint').textContent=GATESTORE?'這台電腦第一次開這間店，請輸入門市密碼；之後點店名就會直接進入。'
+      :(CLOUD?'請輸入總部帳號密碼。':'測試版：總部 admin / admin；門市密碼 0000。');
+    setTimeout(()=>$(GATESTORE?'pw':'uid').focus(),50);return;
+  }
+  sections('home');$('roleBadge').textContent='選擇店點';$('roleBadge').className='badge';renderHome();
 }
 $('pwGo').onclick=async()=>{
   try{
     await AUTH.login($('uid').value.trim(),$('pw').value);
     $('pw').value='';ARRSEL=[];EXTRA=[];rebuildQueue();
     try{const r=await DB.loadRules();if(r&&r.brands)RULES=r;}catch(e){}
-    applyRole();
+    VIEW='app';applyRole();
   }catch(e){toast(e.message);}
 };
 $('pw').addEventListener('keydown',e=>{if(e.key==='Enter')$('pwGo').click();});
-$('logoutBtn').onclick=async()=>{await AUTH.logout();ARRSEL=[];EXTRA=[];rebuildQueue();HIST=[];applyRole();};
+/* 門市：「換店點」只回首頁，不登出（這台電腦下次點同一間店不用再輸密碼）；總部：登出 */
+$('logoutBtn').onclick=async()=>{
+  if(ROLE==='store'){goHome();return;}
+  await AUTH.logout();ARRSEL=[];EXTRA=[];rebuildQueue();HIST=[];goHome();};
 $('pwBtn').onclick=async()=>{
   const a=prompt('輸入新密碼（至少 6 碼）');
   if(a===null)return;
@@ -1317,14 +1372,18 @@ async function renderStaff(){
   const cnt=n=>list.filter(y=>y.name===n).length;
   $('staffList').innerHTML='<div class="stGrid">'+STAFF_STORES.filter(st=>list.some(x=>x.store===st)).map(st=>{
     const ppl=list.filter(x=>x.store===st);
+    const who=d=>ppl.filter(x=>x.active&&x.duty===d).map(x=>x.name).join('、')||'<span style="color:#F2A07B">未指定</span>';
     return '<div class="stCard"><div class="stHead">'+st+'<small>'+ppl.filter(x=>x.active).length+' 人</small></div>'
+     +(st==='總部'?'':'<div class="stDutyBar">店經理：<b>'+who('店經理')+'</b>　庫存管理：<b>'+who('庫存管理')+'</b></div>')
      +ppl.map(x=>'<div class="stRow'+(x.active?'':' off')+'">'
        +'<div class="stName"><b>'+esc(x.name)+'</b>'+(cnt(x.name)>1?'<small>'+cnt(x.name)+' 店</small>':'')
        +'<span class="stSt'+(x.active&&x.default_pin?' warn':'')+'">'+(x.active?(x.default_pin?'預設密碼':'使用中'):'已停用')+'</span></div>'
-       +'<select class="stMove" data-id="'+x.id+'" data-nm="'+esc(x.name)+'" data-from="'+esc(x.store)+'" title="調店：直接選新的店點">'+STAFF_STORES.map(o=>'<option'+(o===x.store?' selected':'')+'>'+o+'</option>').join('')+'</select>'
+       +(x.store==='總部'?'<span></span>':'<select class="stDuty" data-id="'+x.id+'" data-nm="'+esc(x.name)+'" title="可以補印的職務">'
+         +['','店經理','庫存管理'].map(o=>'<option value="'+o+'"'+((x.duty||'')===o?' selected':'')+'>'+(o||'一般')+'</option>').join('')+'</select>')
+       +'<select class="stMove" data-id=""'+x.id+'" data-nm="'+esc(x.name)+'" data-from="'+esc(x.store)+'" title="調店：直接選新的店點">'+STAFF_STORES.map(o=>'<option'+(o===x.store?' selected':'')+'>'+o+'</option>').join('')+'</select>'
        +'<button class="mini" data-pin="'+x.id+'" data-nm="'+esc(x.name)+'">改密碼</button>'
        +'<button class="mini" data-act="'+x.id+'" data-on="'+(x.active?0:1)+'">'+(x.active?'停用':'啟用')+'</button></div>').join('')
-     +'</div>';}).join('')+'</div><p class="hint">要調店：直接在名字右邊的下拉選單選新的店。</p>';
+     +'</div>';}).join('')+'</div><p class="hint">第一個下拉選單是<b>職務</b>：設成「店經理」或「庫存管理」的人才能在門市補印（庫存管理每月換人時在這裡改）。第二個下拉選單是<b>調店</b>。</p>';
   $('staffList').querySelectorAll('[data-pin]').forEach(b=>b.onclick=async()=>{
     const pin=prompt('設定 '+b.dataset.nm+' 的新密碼（4 位數字）：');if(pin==null)return;
     if(!/^\d{4}$/.test(pin.trim())){toast('密碼要是 4 位數字');return;}
@@ -1335,6 +1394,11 @@ async function renderStaff(){
     try{for(const id of ids)await DB.saveStaff(id,null,null,pin.trim(),null);toast('已更新密碼'+(ids.length>1?'（'+ids.length+' 間店）':''));renderStaff();}catch(e){toast('失敗：'+e.message);}
   });
   /* 調店：密碼、過去的列印紀錄都保留（舊紀錄仍記在當時的店） */
+  /* 職務：店經理／庫存管理可以補印（庫存管理每月可能換人，總部在這裡改） */
+  $('staffList').querySelectorAll('.stDuty').forEach(sel=>sel.onchange=async()=>{
+    try{await DB.setDuty(+sel.dataset.id,sel.value);toast(sel.dataset.nm+' → '+(sel.value||'一般'));renderStaff();}
+    catch(e){toast('失敗：'+e.message+(/function|admin_set_duty/.test(e.message)?'（請先在 Supabase 執行 roles.sql）':''));renderStaff();}
+  });
   $('staffList').querySelectorAll('.stMove').forEach(sel=>sel.onchange=async()=>{
     const to=sel.value, from=sel.dataset.from, nm=sel.dataset.nm;
     if(list.some(y=>y.name===nm&&y.store===to)){toast(nm+' 在'+to+'已經有名單了');sel.value=from;return;}
@@ -1460,7 +1524,7 @@ function bindDayList(list){
       if(!cb.checked)return;
       const it=list[+cb.dataset.i];
       const q=parseInt($('arrivals').querySelector('.qbox[data-i="'+cb.dataset.i+'"]').value,10)||1;
-      ARRSEL.push(Object.assign({},it,{qty:Math.max(1,q)}));
+      ARRSEL.push(Object.assign({},it,{qty:Math.max(1,q),_re:ARRMODE==='old'}));
     });
     rebuildQueue();
   };
@@ -1483,6 +1547,7 @@ async function renderArrivals(){
 }
 let STDAYS=[];
 function showStorePane(name){
+  ARRMODE=name==='old'?'old':'today';
   document.querySelectorAll('#stnav button').forEach(b=>b.classList.toggle('on',b.dataset.sp===name));
   document.querySelectorAll('.stpane').forEach(p=>p.hidden=!p.dataset.sp.split(' ').includes(name));
   $('arrTitle').textContent=name==='old'?'以前的到貨':'勾選要印的到貨商品';
@@ -1561,11 +1626,13 @@ $('q').addEventListener('input',doSearch);
 /* ══════════════════ 啟動 ══════════════════ */
 (async function(){
   const p=new URLSearchParams(location.search);
-  const sk=p.get('s'); if(sk&&STORE_KEYS[sk])WANT=sk;
+  const sk=p.get('s'); if(sk&&STORE_KEYS[sk])WANT=sk;   /* 舊的門市網址 ?s=店代號 仍可直接進那間店 */
   try{await AUTH.init();}catch(e){toast(e.message);}
   const saved=await (async()=>{try{return await DB.loadRules();}catch(e){return null;}})();
   if(saved&&saved.brands)RULES=saved;
   await loadCatalog(); buildNameIndex();
+  if(AUTH.isAdmin())VIEW='app';
+  else if(WANT)goStore(WANT);
   applyRole(); renderFooter();
 })();
 </script>
