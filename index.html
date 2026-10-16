@@ -275,6 +275,19 @@ td{font-size:14.5px}
 .homeBtn b{font-family:var(--serif);font-size:24px;font-weight:900}
 .homeBtn small{font-size:12.5px;color:var(--ink2)}
 .homeBtn:hover{border-color:var(--brand);box-shadow:0 0 0 3px rgba(232,84,30,.15)}
+
+.dutyBox{padding:10px 14px}
+.dutyRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:5px 0}
+.dutyLab{font-weight:700;width:72px;flex:none}
+.dutyRow select{flex:1 1 130px;width:auto;min-width:110px;max-width:190px;padding:4px 6px;font-size:14px}
+.dutyRow .mini{flex:none}
+.dutySt{flex:1 1 100%;margin-left:80px;margin-top:-2px}
+.dutySt{font-size:12.5px;color:var(--ink2)}
+.dutySt.warn{color:var(--warn);font-weight:700}
+.stMore{border:0;border-top:1px solid var(--liner);margin:0;padding:0;background:none}
+.stMore>summary{padding:7px 14px;font-size:13px;color:var(--ink2);cursor:pointer;list-style:revert}
+.stMore[open]>summary{border-bottom:1px solid var(--liner)}
+.stRow{grid-template-columns:1fr auto auto auto}
 </style>
 </head>
 <body>
@@ -444,7 +457,7 @@ td{font-size:14.5px}
       <div class="cardHead">
         <h3 class="cardTitle" style="margin:0">補印：到貨清單沒有的商品，從這裡找</h3>
       </div>
-      <p class="hint" style="margin:0 0 8px">標籤<b>掉了、破了、貼錯了</b>要重貼：打型號或品名 → 填張數 → 按<b>「加入」</b>。手機因為每台 IMEI 不同，請從「📅 以前的到貨」補印。</p>
+      <p class="hint" style="margin:0 0 8px">標籤<b>掉了、破了、貼錯了</b>要重貼：打型號或品名 → 填張數 → 按<b>「補印」</b>。手機因為每台 IMEI 不同，請從「📅 以前的到貨」補印。</p>
       <div id="extras"></div>
       <input type="text" id="q" class="rpInput" placeholder="🔍 打型號或品名搜尋，例如：A57、玻璃貼、0170502" autocomplete="off">
       <p class="hint" id="qinfo"></p>
@@ -1375,22 +1388,47 @@ async function renderStaff(){
   try{list=await DB.listStaff('');}catch(e){$('staffList').innerHTML=errBox('暫時無法讀取人員名單','請確認 Supabase 已依序執行 print_logs.sql 和 staff.sql。',e,'renderStaff');return;}
   if(!list.length){$('staffList').innerHTML='<div class="empty">還沒有人員。</div>';return;}
   list.sort((a,b)=>STAFF_STORES.indexOf(a.store)-STAFF_STORES.indexOf(b.store)||String(a.name).localeCompare(b.name));
-  /* 依店點分組成卡片，一排放 2～3 店，不再拉成一整條長表格 */
   const cnt=n=>list.filter(y=>y.name===n).length;
+  const DUTIES=['店經理','庫存管理'];
+  /* 每間店一張卡：上面兩個下拉選單指定「誰可以補印」，其他人收在下面的展開區 */
+  const dutyRow=(st,d,ppl)=>{
+    const cur=ppl.find(x=>x.active&&x.duty===d);
+    return '<div class="dutyRow"><span class="dutyLab">'+d+'</span>'
+     +'<select class="dutySel" data-st="'+esc(st)+'" data-d="'+d+'">'
+     +'<option value="">— 未指定 —</option>'
+     +ppl.filter(x=>x.active).map(x=>'<option value="'+x.id+'"'+(cur&&cur.id===x.id?' selected':'')+'>'+esc(x.name)+'</option>').join('')
+     +'</select>'
+     +(cur?'<button class="mini" data-pin="'+cur.id+'" data-nm="'+esc(cur.name)+'">設定密碼</button>'
+         +'<span class="dutySt'+(cur.default_pin?' warn':'')+'">'+(cur.default_pin?'⚠ 還是預設密碼 0000':'密碼已設定')+'</span>'
+       :'<span class="dutySt warn">未指定，這間店不能補印</span>')
+     +'</div>';
+  };
   $('staffList').innerHTML='<div class="stGrid">'+STAFF_STORES.filter(st=>list.some(x=>x.store===st)).map(st=>{
     const ppl=list.filter(x=>x.store===st);
-    const who=d=>ppl.filter(x=>x.active&&x.duty===d).map(x=>x.name).join('、')||'<span style="color:#F2A07B">未指定</span>';
     return '<div class="stCard"><div class="stHead">'+st+'<small>'+ppl.filter(x=>x.active).length+' 人</small></div>'
-     +(st==='總部'?'':'<div class="stDutyBar">店經理：<b>'+who('店經理')+'</b>　庫存管理：<b>'+who('庫存管理')+'</b></div>')
+     +(st==='總部'?'<div class="stDutyBar">總部列印不用密碼，不用指定職務。</div>'
+        :'<div class="dutyBox">'+DUTIES.map(d=>dutyRow(st,d,ppl)).join('')+'</div>')
+     +'<details class="stMore"><summary>這間店的所有人員（'+ppl.length+' 位）：改密碼、調店、停用</summary>'
      +ppl.map(x=>'<div class="stRow'+(x.active?'':' off')+'">'
        +'<div class="stName"><b>'+esc(x.name)+'</b>'+(cnt(x.name)>1?'<small>'+cnt(x.name)+' 店</small>':'')
+       +(x.duty?'<small style="border-color:var(--brand);color:var(--brand)">'+x.duty+'</small>':'')
        +'<span class="stSt'+(x.active&&x.default_pin?' warn':'')+'">'+(x.active?(x.default_pin?'預設密碼':'使用中'):'已停用')+'</span></div>'
-       +(x.store==='總部'?'<span></span>':'<select class="stDuty" data-id="'+x.id+'" data-nm="'+esc(x.name)+'" title="可以補印的職務">'
-         +['','店經理','庫存管理'].map(o=>'<option value="'+o+'"'+((x.duty||'')===o?' selected':'')+'>'+(o||'一般')+'</option>').join('')+'</select>')
-       +'<select class="stMove" data-id=""'+x.id+'" data-nm="'+esc(x.name)+'" data-from="'+esc(x.store)+'" title="調店：直接選新的店點">'+STAFF_STORES.map(o=>'<option'+(o===x.store?' selected':'')+'>'+o+'</option>').join('')+'</select>'
+       +'<select class="stMove" data-id="'+x.id+'" data-nm="'+esc(x.name)+'" data-from="'+esc(x.store)+'" title="調店：直接選新的店點">'+STAFF_STORES.map(o=>'<option'+(o===x.store?' selected':'')+'>'+o+'</option>').join('')+'</select>'
        +'<button class="mini" data-pin="'+x.id+'" data-nm="'+esc(x.name)+'">改密碼</button>'
        +'<button class="mini" data-act="'+x.id+'" data-on="'+(x.active?0:1)+'">'+(x.active?'停用':'啟用')+'</button></div>').join('')
-     +'</div>';}).join('')+'</div><p class="hint">第一個下拉選單是<b>職務</b>：設成「店經理」或「庫存管理」的人才能在門市補印（庫存管理每月換人時在這裡改）。第二個下拉選單是<b>調店</b>。</p>';
+     +'</details></div>';}).join('')+'</div>'
+   +'<p class="hint">每間店指定<b>店經理</b>和<b>庫存管理</b>，只有這兩個人能在門市補印，而且要輸入自己的 4 位數密碼。庫存管理每月換人就在這裡改。</p>';
+  /* 指定職務：同一間店同一個職務只有一個人；一個人也只會有一個職務 */
+  $('staffList').querySelectorAll('.dutySel').forEach(el=>el.onchange=async()=>{
+    const st=el.dataset.st,d=el.dataset.d,id=el.value?+el.value:0;
+    const person=id?list.find(x=>x.id===id):null;
+    if(person&&person.duty&&person.duty!==d&&!confirm(person.name+' 目前是「'+person.duty+'」。\n改成「'+d+'」後，'+person.duty+'就會變成未指定。\n確定嗎？')){renderStaff();return;}
+    try{
+      for(const old of list.filter(x=>x.store===st&&x.duty===d&&x.id!==id))await DB.setDuty(old.id,'');
+      if(id)await DB.setDuty(id,d);
+      toast(st+' '+d+'：'+(person?person.name:'未指定'));renderStaff();
+    }catch(e){toast('失敗：'+e.message+(/function|admin_set_duty/.test(e.message)?'（請先在 Supabase 執行 roles.sql）':''));renderStaff();}
+  });
   $('staffList').querySelectorAll('[data-pin]').forEach(b=>b.onclick=async()=>{
     const pin=prompt('設定 '+b.dataset.nm+' 的新密碼（4 位數字）：');if(pin==null)return;
     if(!/^\d{4}$/.test(pin.trim())){toast('密碼要是 4 位數字');return;}
@@ -1401,11 +1439,6 @@ async function renderStaff(){
     try{for(const id of ids)await DB.saveStaff(id,null,null,pin.trim(),null);toast('已更新密碼'+(ids.length>1?'（'+ids.length+' 間店）':''));renderStaff();}catch(e){toast('失敗：'+e.message);}
   });
   /* 調店：密碼、過去的列印紀錄都保留（舊紀錄仍記在當時的店） */
-  /* 職務：店經理／庫存管理可以補印（庫存管理每月可能換人，總部在這裡改） */
-  $('staffList').querySelectorAll('.stDuty').forEach(sel=>sel.onchange=async()=>{
-    try{await DB.setDuty(+sel.dataset.id,sel.value);toast(sel.dataset.nm+' → '+(sel.value||'一般'));renderStaff();}
-    catch(e){toast('失敗：'+e.message+(/function|admin_set_duty/.test(e.message)?'（請先在 Supabase 執行 roles.sql）':''));renderStaff();}
-  });
   $('staffList').querySelectorAll('.stMove').forEach(sel=>sel.onchange=async()=>{
     const to=sel.value, from=sel.dataset.from, nm=sel.dataset.nm;
     if(list.some(y=>y.name===nm&&y.store===to)){toast(nm+' 在'+to+'已經有名單了');sel.value=from;return;}
@@ -1618,7 +1651,7 @@ async function doSearch(){
      +'<small>'+(it.locked?'手機／唯一序號商品，請從「📅 以前的到貨」補印':esc(barcodeOf(it))+(it.imei?'　IMEI':(it.serial?'　序號':'')))
      +'　<span class="tag">'+it.src+(it.docno?' '+esc(dateOf(it.docno)):'')+'</span></small>'+(it.locked?'':pcBadge(it))+'</span>'
      +(it.locked?'':'<span class="qwrap">張數 <input type="text" class="rq" data-i="'+i+'" value="1"></span>'
-       +'<button class="mini" data-add="'+i+'">加入</button>')
+       +'<button class="mini primary" data-add="'+i+'">補印</button>')
      +'</div>';
   }).join('')+(hit.length>=60?'<p class="hint">結果過多，只顯示前 60 筆。</p>':'');
   refreshBadges();
@@ -1626,7 +1659,7 @@ async function doSearch(){
     const it=hit[+b.dataset.add];
     const q=parseInt(box.querySelector('.rq[data-i="'+b.dataset.add+'"]').value,10)||1;
     queueAdd(it,Math.max(1,q));
-    toast('已加入：'+it.label_name);
+    toast('已加入補印清單：'+it.label_name);
   });
 }
 $('q').addEventListener('input',doSearch);
