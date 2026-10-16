@@ -279,6 +279,9 @@ td{font-size:14.5px}
 .dutyBox{padding:10px 14px}
 .dutyRow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:5px 0}
 .dutyLab{font-weight:700;width:72px;flex:none}
+.supCard{margin:0 0 14px;border-color:var(--brand)}
+.supCard .stHead{background:var(--brand)}
+.supCard select{flex:1 1 220px;max-width:300px}
 .dutyRow select{flex:1 1 130px;width:auto;min-width:110px;max-width:190px;padding:4px 6px;font-size:14px}
 .dutyRow .mini{flex:none}
 .dutySt{flex:1 1 100%;margin-left:80px;margin-top:-2px}
@@ -937,7 +940,13 @@ function askWho(rows){
   return new Promise(async resolve=>{
     const store=MYSTORE||'總部';
     let list=[];
-    try{list=(await DB.listStaff(store)).filter(x=>x.active&&x.duty);}
+    try{
+      const all=await DB.listStaff('');
+      /* 這間店的店經理／庫存管理 ＋ 所有區督導（區督導每一間店都能補印） */
+      const seen={};
+      list=all.filter(x=>x.active&&x.duty&&(x.store===store||x.duty==='區督導'))
+              .filter(x=>seen[x.name]?false:(seen[x.name]=1,true));
+    }
     catch(e){toast('讀不到人員名單：'+e.message);resolve(null);return;}
     if(!list.length){toast('這間店還沒指定店經理或庫存管理，請總部到「人員管理」設定');resolve(null);return;}
     let last='';try{last=localStorage.getItem('bc:who:'+store)||'';}catch(e){}
@@ -1390,6 +1399,10 @@ async function renderStaff(){
   list.sort((a,b)=>STAFF_STORES.indexOf(a.store)-STAFF_STORES.indexOf(b.store)||String(a.name).localeCompare(b.name));
   const cnt=n=>list.filter(y=>y.name===n).length;
   const DUTIES=['店經理','庫存管理'];
+  const sups=[];const seenSup={};
+  for(const x of list)if(x.active&&x.duty==='區督導'&&!seenSup[x.name]){seenSup[x.name]=1;sups.push(x);}
+  const names=[];const seenNm={};
+  for(const x of list)if(x.active&&!seenNm[x.name]){seenNm[x.name]=1;names.push(x);}
   /* 每間店一張卡：上面兩個下拉選單指定「誰可以補印」，其他人收在下面的展開區 */
   const dutyRow=(st,d,ppl)=>{
     const cur=ppl.find(x=>x.active&&x.duty===d);
@@ -1400,14 +1413,24 @@ async function renderStaff(){
      +'</select>'
      +(cur?'<button class="mini" data-pin="'+cur.id+'" data-nm="'+esc(cur.name)+'">設定密碼</button>'
          +'<span class="dutySt'+(cur.default_pin?' warn':'')+'">'+(cur.default_pin?'⚠ 還是預設密碼 0000':'密碼已設定')+'</span>'
-       :'<span class="dutySt warn">未指定，這間店不能補印</span>')
+       :'<span class="dutySt">未指定</span>')
      +'</div>';
   };
-  $('staffList').innerHTML='<div class="stGrid">'+STAFF_STORES.filter(st=>list.some(x=>x.store===st)).map(st=>{
+  $('staffList').innerHTML='<div class="stCard supCard"><div class="stHead">區督導<small>所有門市都可以補印</small></div><div class="dutyBox">'
+   +(sups.length?sups.map(x=>'<div class="dutyRow"><span class="dutyLab" style="width:auto"><b>'+esc(x.name)+'</b></span>'
+       +'<button class="mini" data-pin="'+x.id+'" data-nm="'+esc(x.name)+'">設定密碼</button>'
+       +'<button class="mini" data-unsup="'+esc(x.name)+'">移除</button>'
+       +'<span class="dutySt'+(x.default_pin?' warn':'')+'">'+(x.default_pin?'⚠ 還是預設密碼 0000':'密碼已設定')+'</span></div>').join('')
+     :'<p class="dutySt" style="margin:0">目前沒有區督導。</p>')
+   +'<div class="dutyRow"><span class="dutyLab">新增</span><select id="supAdd"><option value="">— 選一個人設為區督導 —</option>'
+   +names.filter(x=>!seenSup[x.name]&&x.store!=='總部').map(x=>'<option value="'+esc(x.name)+'">'+esc(x.name)+'（'+esc(x.store)+'）</option>').join('')
+   +'</select></div></div></div>'
+   +'<div class="stGrid">'+STAFF_STORES.filter(st=>list.some(x=>x.store===st)).map(st=>{
     const ppl=list.filter(x=>x.store===st);
     return '<div class="stCard"><div class="stHead">'+st+'<small>'+ppl.filter(x=>x.active).length+' 人</small></div>'
      +(st==='總部'?'<div class="stDutyBar">總部列印不用密碼，不用指定職務。</div>'
-        :'<div class="dutyBox">'+DUTIES.map(d=>dutyRow(st,d,ppl)).join('')+'</div>')
+        :'<div class="dutyBox">'+DUTIES.map(d=>dutyRow(st,d,ppl)).join('')
+          +(ppl.some(x=>x.active&&x.duty)||sups.length?'':'<p class="dutySt warn" style="margin:6px 0 0 80px">⚠ 這間店還沒有人能補印</p>')+'</div>')
      +'<details class="stMore"><summary>這間店的所有人員（'+ppl.length+' 位）：改密碼、調店、停用</summary>'
      +ppl.map(x=>'<div class="stRow'+(x.active?'':' off')+'">'
        +'<div class="stName"><b>'+esc(x.name)+'</b>'+(cnt(x.name)>1?'<small>'+cnt(x.name)+' 店</small>':'')
@@ -1417,7 +1440,18 @@ async function renderStaff(){
        +'<button class="mini" data-pin="'+x.id+'" data-nm="'+esc(x.name)+'">改密碼</button>'
        +'<button class="mini" data-act="'+x.id+'" data-on="'+(x.active?0:1)+'">'+(x.active?'停用':'啟用')+'</button></div>').join('')
      +'</details></div>';}).join('')+'</div>'
-   +'<p class="hint">每間店指定<b>店經理</b>和<b>庫存管理</b>，只有這兩個人能在門市補印，而且要輸入自己的 4 位數密碼。庫存管理每月換人就在這裡改。</p>';
+   +'<p class="hint">能補印的人：該店的<b>店經理</b>、<b>庫存管理</b>，以及<b>區督導</b>（所有門市都能印）。補印時要輸入自己的 4 位數密碼。庫存管理每月換人就在這裡改。</p>';
+  /* 區督導：設在這個人的每一筆名單上，所以每一間店的補印名單都看得到他 */
+  const setAll=async(nm,d)=>{for(const r of list.filter(x=>x.name===nm))await DB.setDuty(r.id,d);};
+  if($('supAdd'))$('supAdd').onchange=async()=>{
+    const nm=$('supAdd').value; if(!nm)return;
+    try{await setAll(nm,'區督導');toast(nm+' 設為區督導，所有門市都能補印');renderStaff();}
+    catch(e){toast('失敗：'+e.message+(/function|admin_set_duty/.test(e.message)?'（請先在 Supabase 執行 roles2.sql）':''));renderStaff();}
+  };
+  $('staffList').querySelectorAll('[data-unsup]').forEach(b=>b.onclick=async()=>{
+    if(!confirm('移除區督導：'+b.dataset.unsup+'\n之後他就不能在門市補印了。'))return;
+    try{await setAll(b.dataset.unsup,'');toast('已移除');renderStaff();}catch(e){toast('失敗：'+e.message);}
+  });
   /* 指定職務：同一間店同一個職務只有一個人；一個人也只會有一個職務 */
   $('staffList').querySelectorAll('.dutySel').forEach(el=>el.onchange=async()=>{
     const st=el.dataset.st,d=el.dataset.d,id=el.value?+el.value:0;
