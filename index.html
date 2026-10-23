@@ -303,6 +303,7 @@ td{font-size:14.5px}
   </div>
   <span class="badge" id="roleBadge">總部</span>
   <span class="spacer"></span>
+  <button class="mini hbtn" id="homeBtn" hidden><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>工具箱</button>
   <button class="mini hbtn" id="pwBtn" hidden><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>改密碼</button>
   <button class="mini hbtn" id="logoutBtn" hidden><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>登出</button>
 </header>
@@ -1049,6 +1050,19 @@ function goStore(k){
 }
 function goHome(){VIEW='home';GATESTORE='';WANT='';ARRSEL=[];EXTRA=[];rebuildQueue();
   try{history.replaceState(null,'',location.pathname);}catch(e){}applyRole();}
+/* ══ 倚盟工具箱（首頁）：登入在那邊做，這裡只沿用 ══ */
+const HOME_URL='/';
+const HOME_LOCAL=location.protocol==='file:';   /* 直接開檔案測試時，保留原本的登入畫面 */
+function ssoSave(){
+  try{localStorage.setItem('emo:sso',JSON.stringify({
+    role:AUTH.isAdmin()?'admin':'store',
+    store:AUTH.isAdmin()?'':(STORE_KEYS[AUTH.store]||''),
+    storeKey:AUTH.isAdmin()?'':AUTH.store,
+    account:AUTH.isAdmin()?'admin':accountOf(AUTH.store),
+    at:Date.now()}));}catch(e){}
+}
+function ssoClear(){try{localStorage.removeItem('emo:sso');}catch(e){}}
+$('homeBtn').onclick=()=>{location.href=HOME_URL;};
 $('hqLink').onclick=e=>{e.preventDefault();GATESTORE='';VIEW='gate';applyRole();};
 $('gateBack').onclick=e=>{e.preventDefault();goHome();};
 function applyRole(){
@@ -1058,20 +1072,22 @@ function applyRole(){
   $('pwBtn').hidden=!(logged&&admin&&CLOUD);
   document.querySelector('footer').hidden=true;
   if(admin){
-    ROLE='hq';MYSTORE='';$('logoutBtn').hidden=false;$('logoutBtn').lastChild.textContent='登出';
+    ROLE='hq';MYSTORE='';$('logoutBtn').hidden=false;$('logoutBtn').lastChild.textContent='登出';$('homeBtn').hidden=false;ssoSave();
     $('roleBadge').textContent='總部';$('roleBadge').className='badge';
     sections('hq');initHQ();return;
   }
-  if(VIEW==='app'&&AUTH.role==='store'){
+  if(AUTH.role==='store'){
     ROLE='store';
     const k=AUTH.store||'';
     MYSTORE=STORE_KEYS[k]||'';
     if(WANT&&WANT!==k){toast('這個帳號屬於 '+(STORE_KEYS[k]||'其他門市')+'，已自動切換');}
-    $('logoutBtn').hidden=false;$('logoutBtn').lastChild.textContent='換店點';
+    $('logoutBtn').hidden=true;$('homeBtn').hidden=false;ssoSave();
     $('roleBadge').textContent=MYSTORE||'門市';$('roleBadge').className='badge store';
     sections('store');document.querySelector('footer').hidden=false;renderStorePage();return;
   }
   ROLE='';MYSTORE='';$('logoutBtn').hidden=true;
+  /* 登入統一在「倚盟工具箱」首頁做，這裡沒登入就回首頁 */
+  if(!HOME_LOCAL){location.replace(HOME_URL);return;}
   if(VIEW==='gate'){
     sections('gate');
     $('roleBadge').textContent=GATESTORE?STORE_KEYS[GATESTORE]:'總部';$('roleBadge').className='badge';
@@ -1094,8 +1110,9 @@ $('pwGo').onclick=async()=>{
 $('pw').addEventListener('keydown',e=>{if(e.key==='Enter')$('pwGo').click();});
 /* 門市：「換店點」只回首頁，不登出（這台電腦下次點同一間店不用再輸密碼）；總部：登出 */
 $('logoutBtn').onclick=async()=>{
-  if(ROLE==='store'){goHome();return;}
-  await AUTH.logout();ARRSEL=[];EXTRA=[];rebuildQueue();HIST=[];goHome();};
+  await AUTH.logout();ssoClear();ARRSEL=[];EXTRA=[];rebuildQueue();HIST=[];
+  if(!HOME_LOCAL){location.replace(HOME_URL+'?logout=1');return;}
+  goHome();};
 $('pwBtn').onclick=async()=>{
   const a=prompt('輸入新密碼（至少 6 碼）');
   if(a===null)return;
@@ -1706,8 +1723,8 @@ $('q').addEventListener('input',doSearch);
   const saved=await (async()=>{try{return await DB.loadRules();}catch(e){return null;}})();
   if(saved&&saved.brands)RULES=saved;
   await loadCatalog(); buildNameIndex();
-  if(AUTH.isAdmin())VIEW='app';
-  else if(WANT)goStore(WANT);
+  if(AUTH.role)VIEW='app';
+  else if(WANT&&HOME_LOCAL)goStore(WANT);
   applyRole(); renderFooter();
 })();
 </script>
