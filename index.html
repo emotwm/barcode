@@ -291,6 +291,12 @@ td{font-size:14.5px}
 .stMore>summary{padding:7px 14px;font-size:13px;color:var(--ink2);cursor:pointer;list-style:revert}
 .stMore[open]>summary{border-bottom:1px solid var(--liner)}
 .stRow{grid-template-columns:1fr auto auto auto}
+
+.tbwrap{position:relative;display:inline-block}
+.tbmenu{position:absolute;right:0;top:calc(100% + 6px);min-width:190px;background:#fff;border:1px solid var(--rule);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;z-index:40}
+.tbmenu a{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:6px;color:var(--ink);text-decoration:none;font-size:15px;white-space:nowrap}
+.tbmenu a:hover{background:#FFF1E8;color:var(--brand)}
+.tbmenu a span{width:22px;text-align:center}
 </style>
 </head>
 <body>
@@ -303,7 +309,15 @@ td{font-size:14.5px}
   </div>
   <span class="badge" id="roleBadge">總部</span>
   <span class="spacer"></span>
-  <button class="mini hbtn" id="homeBtn" hidden><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>工具箱</button>
+  <button class="mini hbtn" id="backBtn" hidden>← 返回</button>
+  <div class="tbwrap" id="tbWrap" hidden>
+    <button class="mini hbtn" id="homeBtn"><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>工具箱 ▾</button>
+    <div class="tbmenu" id="tbMenu" hidden>
+      <a href="/"><span>🏠</span>工具箱首頁</a>
+      <a href="/telecom-invoice/" id="tbInv"><span>📤</span>進貨單上傳</a>
+      <!-- 以後加盤點、耗材：照上面格式加一行 <a href="/stock/"><span>📋</span>盤點</a> -->
+    </div>
+  </div>
   <button class="mini hbtn" id="pwBtn" hidden><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>改密碼</button>
   <button class="mini hbtn" id="logoutBtn" hidden><svg class="ic" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>登出</button>
 </header>
@@ -1062,7 +1076,10 @@ function ssoSave(){
     at:Date.now()}));}catch(e){}
 }
 function ssoClear(){try{localStorage.removeItem('emo:sso');}catch(e){}}
-$('homeBtn').onclick=()=>{location.href=HOME_URL;};
+/* 工具箱下拉：首頁、進貨單、以後的其他系統；返回＝上一頁（沒有上一頁就回首頁） */
+$('homeBtn').onclick=e=>{e.stopPropagation();$('tbMenu').hidden=!$('tbMenu').hidden;};
+document.addEventListener('click',e=>{if(!e.target.closest('#tbWrap'))$('tbMenu').hidden=true;});
+$('backBtn').onclick=()=>{if(history.length>1)history.back();else location.href=HOME_URL;};
 $('hqLink').onclick=e=>{e.preventDefault();GATESTORE='';VIEW='gate';applyRole();};
 $('gateBack').onclick=e=>{e.preventDefault();goHome();};
 function applyRole(){
@@ -1072,7 +1089,7 @@ function applyRole(){
   $('pwBtn').hidden=!(logged&&admin&&CLOUD);
   document.querySelector('footer').hidden=true;
   if(admin){
-    ROLE='hq';MYSTORE='';$('logoutBtn').hidden=false;$('logoutBtn').lastChild.textContent='登出';$('homeBtn').hidden=false;ssoSave();
+    ROLE='hq';MYSTORE='';$('logoutBtn').hidden=false;$('logoutBtn').lastChild.textContent='登出';$('tbWrap').hidden=false;$('backBtn').hidden=false;$('tbInv').lastChild.textContent='進貨單稽核';ssoSave();
     $('roleBadge').textContent='總部';$('roleBadge').className='badge';
     sections('hq');initHQ();return;
   }
@@ -1081,7 +1098,7 @@ function applyRole(){
     const k=AUTH.store||'';
     MYSTORE=STORE_KEYS[k]||'';
     if(WANT&&WANT!==k){toast('這個帳號屬於 '+(STORE_KEYS[k]||'其他門市')+'，已自動切換');}
-    $('logoutBtn').hidden=true;$('homeBtn').hidden=false;ssoSave();
+    $('logoutBtn').hidden=true;$('tbWrap').hidden=false;$('backBtn').hidden=false;$('tbInv').lastChild.textContent='進貨單上傳';ssoSave();
     $('roleBadge').textContent=MYSTORE||'門市';$('roleBadge').className='badge store';
     sections('store');document.querySelector('footer').hidden=false;renderStorePage();return;
   }
