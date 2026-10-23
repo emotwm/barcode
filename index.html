@@ -355,6 +355,14 @@ footer .cnt strong{color:var(--brand)}
 .modal{background:rgba(60,35,20,.45)}
 .modal .box{border-radius:18px;max-width:400px}
 @media print{html,body{background:#fff!important;background-image:none!important}}
+
+.terms{background:#FFF7F0;border:1px solid #F2C9AE;border-radius:12px;padding:12px 14px;margin-top:14px;font-size:13.5px;line-height:1.6;color:var(--ink)}
+.terms b{color:var(--brand)}
+.terms ol{margin:8px 0 0;padding-left:20px}
+.terms li{margin:4px 0}
+.terms li b{color:var(--ink)}
+.terms .agree{display:flex;align-items:center;gap:8px;margin:12px 0 0;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer}
+.terms .agree input{width:18px;height:18px;margin:0}
 </style>
 </head>
 <body>
@@ -555,7 +563,27 @@ footer .cnt strong{color:var(--brand)}
   <h3>🔒 補印需要主管確認</h3>
   <p class="hint" style="margin:0">補印只有<b>店經理</b>或<b>庫存管理</b>可以。選名字、輸入個人密碼，這次補印會記在你名下。</p>
   <label>店經理／庫存管理<select id="whoName"></select></label>
-  <label>個人密碼（4 位數）<input type="password" id="whoPin" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+  <div id="whoPinRow"><label>個人密碼（4 位數）<input type="password" id="whoPin" inputmode="numeric" maxlength="8" autocomplete="off"></label></div>
+  <!-- 第一次使用（密碼還是預設 0000）：先讀約定，再自己設密碼 -->
+  <div id="whoSetup" hidden>
+    <div class="terms">
+      <b>第一次使用，請先設定自己的補印密碼</b>
+      <ol>
+        <li>這組密碼代表<b>你本人</b>。用它補印的每一張標籤，紀錄都記在你名下。</li>
+        <li><b>密碼只有你自己知道，不能告訴任何人</b>（包含同事、代班的人），也不要寫在店裡看得到的地方。</li>
+        <li>如果有人用你的密碼印標籤貼錯機器、或把同一台手機印了兩張，造成盤點短少、串號、帳對不起來，系統只看得到是你印的，<b>總部會先找你負責</b>。</li>
+        <li>不要用 0000、1234、生日這種容易猜的數字。</li>
+        <li>忘記密碼請聯絡總部重設。總部看不到你的密碼，只能幫你重設。</li>
+        <li>覺得密碼可能被別人知道了，<b>當天就通知總部重設</b>，不要等。</li>
+        <li>調店或離職時，總部會停用這組密碼。</li>
+      </ol>
+      <label class="agree"><input type="checkbox" id="whoAgree"> 我已閱讀並同意以上約定</label>
+    </div>
+    <div id="whoNewRows" hidden>
+      <label>設定新密碼（4 位數字）<input type="password" id="whoNew1" inputmode="numeric" maxlength="4" autocomplete="new-password"></label>
+      <label>再輸入一次<input type="password" id="whoNew2" inputmode="numeric" maxlength="4" autocomplete="new-password"></label>
+    </div>
+  </div>
   <p class="err" id="whoErr"></p>
   <div class="btnrow"><button id="whoCancel">取消</button><button class="primary" id="whoOk">確認列印</button></div>
 </div></div>
@@ -770,6 +798,8 @@ const LocalDB={
   async listStaff(store){return this.read('staff',[]).filter(x=>!store||x.store===store)
     .map(x=>({id:x.id,store:x.store,name:x.name,active:x.active!==false,default_pin:x.pin==='0000',duty:x.duty||''}));},
   async setDuty(id,duty){const all=this.read('staff',[]);const x=all.find(a=>a.id===id);if(x){x.duty=duty||'';this.write('staff',all);}},
+  async setOwnPin(id,oldPin,newPin){const all=this.read('staff',[]);const x=all.find(a=>a.id===id);
+    if(!x||x.pin!==oldPin)throw new Error('原密碼錯誤');x.pin=newPin;this.write('staff',all);},
   async logPrintsArrival(rows){await this.logPrints(rows.map(r=>Object.assign({staff_name:''},r)));},
   async saveStaff(id,store,name,pin,active){const all=this.read('staff',[]);
     let x=id?all.find(a=>a.id===id):null;
@@ -824,6 +854,7 @@ const CloudDB={
     const {error}=await this.sb.rpc('admin_save_staff',{p_id:id||null,p_store:store||null,p_name:name||null,p_pin:pin||null,p_active:active==null?null:active});
     if(error)throw new Error(error.message);},
   async setDuty(id,duty){const {error}=await this.sb.rpc('admin_set_duty',{p_id:id,p_duty:duty||null});if(error)throw new Error(error.message);},
+  async setOwnPin(id,oldPin,newPin){const {error}=await this.sb.rpc('staff_set_own_pin',{p_id:id,p_old:oldPin,p_new:newPin});if(error)throw new Error(error.message);},
   async logPrintsArrival(rows){const {error}=await this.sb.rpc('log_prints_arrival',{p_rows:rows});if(error)throw new Error(error.message);},
   async logPrintsBy(staffId,pin,rows){
     const {data,error}=await this.sb.rpc('log_prints_by',{p_staff:staffId,p_pin:pin,p_rows:rows});
@@ -1024,16 +1055,38 @@ function askWho(rows){
     if(!list.length){toast('這間店還沒指定店經理或庫存管理，請總部到「人員管理」設定');resolve(null);return;}
     let last='';try{last=localStorage.getItem('bc:who:'+store)||'';}catch(e){}
     $('whoName').innerHTML='<option value="">— 請選擇 —</option>'+list.map(x=>'<option value="'+x.id+'"'+(String(x.id)===last?' selected':'')+'>'+esc(x.name)+'（'+esc(x.duty)+'）</option>').join('');
-    $('whoPin').value='';$('whoErr').textContent='';$('whoModal').hidden=false;
-    setTimeout(()=>($('whoName').value?$('whoPin'):$('whoName')).focus(),50);
-    const close=v=>{$('whoModal').hidden=true;$('whoOk').onclick=$('whoCancel').onclick=$('whoPin').onkeydown=null;resolve(v);};
+    $('whoPin').value='';$('whoNew1').value='';$('whoNew2').value='';$('whoAgree').checked=false;$('whoErr').textContent='';$('whoModal').hidden=false;
+    const picked=()=>list.find(x=>String(x.id)===$('whoName').value);
+    /* 密碼還是預設 0000 的人：第一次要先讀約定、自己設密碼，設好直接接著補印 */
+    const mode=()=>{const p=picked(),first=!!(p&&p.default_pin);
+      $('whoSetup').hidden=!first;$('whoPinRow').hidden=first;$('whoErr').textContent='';
+      $('whoOk').textContent=first?'設定密碼並補印':'確認列印';
+      if(first){$('whoNewRows').hidden=!$('whoAgree').checked;}};
+    $('whoName').onchange=mode;mode();
+    $('whoAgree').onchange=()=>{$('whoNewRows').hidden=!$('whoAgree').checked;$('whoErr').textContent='';if($('whoAgree').checked)setTimeout(()=>$('whoNew1').focus(),50);};
+    setTimeout(()=>($('whoName').value?(picked()&&picked().default_pin?$('whoAgree'):$('whoPin')):$('whoName')).focus(),50);
+    const close=v=>{$('whoModal').hidden=true;$('whoOk').onclick=$('whoCancel').onclick=$('whoPin').onkeydown=$('whoNew2').onkeydown=$('whoName').onchange=$('whoAgree').onchange=null;resolve(v);};
     $('whoCancel').onclick=()=>close(null);
     $('whoPin').onkeydown=e=>{if(e.key==='Enter')$('whoOk').click();};
+    $('whoNew2').onkeydown=e=>{if(e.key==='Enter')$('whoOk').click();};
     $('whoOk').onclick=async()=>{
-      const id=$('whoName').value, pin=$('whoPin').value.trim();
-      if(!id){$('whoErr').textContent='請選擇你的名字';return;}
-      if(!pin){$('whoErr').textContent='請輸入個人密碼';return;}
-      $('whoOk').disabled=true;$('whoErr').textContent='確認中…';
+      const id=$('whoName').value, p=picked();
+      if(!id||!p){$('whoErr').textContent='請選擇你的名字';return;}
+      let pin;
+      if(p.default_pin){
+        if(!$('whoAgree').checked){$('whoErr').textContent='請先閱讀約定並勾選同意';return;}
+        const a=$('whoNew1').value.trim(),b=$('whoNew2').value.trim();
+        if(!/^\d{4}$/.test(a)){$('whoErr').textContent='新密碼要是 4 位數字';return;}
+        if(a==='0000'||a==='1234'){$('whoErr').textContent='這組太好猜了，換一組';return;}
+        if(a!==b){$('whoErr').textContent='兩次輸入的不一樣';$('whoNew2').select();return;}
+        $('whoOk').disabled=true;$('whoErr').textContent='設定中…';
+        try{await DB.setOwnPin(+id,'0000',a);pin=a;toast(p.name+' 的補印密碼已設定');}
+        catch(e){$('whoOk').disabled=false;$('whoErr').textContent='❌ 設定失敗：'+e.message+(/function|staff_set_own_pin/.test(e.message)?'（請總部先在 Supabase 執行 roles3.sql）':'');return;}
+      }else{
+        pin=$('whoPin').value.trim();
+        if(!pin){$('whoErr').textContent='請輸入個人密碼';return;}
+        $('whoOk').disabled=true;$('whoErr').textContent='確認中…';
+      }
       try{const name=await DB.logPrintsBy(+id,pin,rows);
         try{localStorage.setItem('bc:who:'+store,id);}catch(e){}
         $('whoOk').disabled=false;close(name||true);}
